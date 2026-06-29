@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro Analítico de Trayectorias EAD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <!-- SheetJS (Excel) con soporte para Estilos -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .dark ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 min-h-screen font-sans antialiased transition-colors duration-300">
+
+    <nav class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#1e293b]/80 backdrop-blur px-6 py-4 flex flex-col md:flex-row items-center justify-between sticky top-0 z-50 gap-4 md:gap-0 transition-colors duration-300">
+        <div class="flex items-center gap-3">
+            <span class="text-3xl">🎯</span>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Registro Analítico de Trayectorias</h1>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Resolución 906-DGE-2026 - Módulo de Control Multimatriz</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="status-materias" class="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-medium">Materias procesadas: 0</div>
+            <div id="status-alumnos" class="bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800/60 px-3 py-1.5 rounded-lg text-blue-700 dark:text-blue-300 font-bold text-xs">Alumnos detectados: 0</div>
+            
+            <!-- Botón Modo Claro/Oscuro -->
+            <button id="theme-toggle" class="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 focus:outline-none transition-colors border border-slate-200 dark:border-slate-700" title="Cambiar tema">
+                <span id="theme-toggle-light-icon" class="hidden text-lg leading-none">🌞</span>
+                <span id="theme-toggle-dark-icon" class="hidden text-lg leading-none">🌙</span>
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+
+        <!-- PASO 1 -->
+        <div class="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-colors duration-300">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+            <div class="mb-4">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">1</span>
+                    Subir Archivos de Calificaciones
+                </h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm ml-8">Puedes subir hasta 9 archivos de Excel a la vez. El nombre del archivo se usará como nombre de la materia.</p>
+            </div>
+            
+            <div class="ml-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div class="flex flex-col space-y-3">
+                    <button onclick="document.getElementById('excel-in').click()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                        <span class="text-xl">📂</span> Seleccionar Archivos (.xlsx)
+                    </button>
+                    <input type="file" id="excel-in" multiple accept=".xlsx, .xls" class="hidden">
+                    <div class="flex justify-between items-center px-1">
+                        <span class="text-xs text-slate-500">Archivos listos en cola:</span>
+                        <span id="file-counter" class="text-xs bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 font-bold border border-slate-200 dark:border-slate-800">0 / 9</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 dark:bg-[#0f172a] rounded-xl p-4 border border-slate-200 dark:border-slate-800 h-32 overflow-y-auto">
+                    <div id="file-queue" class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                        <span class="italic block text-center py-2 text-slate-500">Aún no has seleccionado ningún archivo.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PASO 2 -->
+        <div id="config-panel" class="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-colors duration-300">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+            <div class="mb-6">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">2</span>
+                    Filtros y Configuración
+                </h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm ml-8">Ajusta el rango de fechas que deseas analizar. Luego podrás filtrar por colores.</p>
+            </div>
+
+            <div class="ml-8 grid grid-cols-1 lg:grid-cols-5 gap-6">
+                
+                <!-- Rango de Fechas -->
+                <div class="lg:col-span-2 space-y-3 bg-slate-50 dark:bg-[#0f172a] p-5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <h3 class="font-bold text-slate-700 dark:text-slate-300 text-sm mb-3 flex items-center gap-2">📅 Rango de Fechas (Opcional)</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] text-slate-500 mb-1.5 uppercase tracking-wider font-bold">Inicio:</label>
+                            <input type="date" id="date-start" class="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-500 mb-1.5 uppercase tracking-wider font-bold">Final:</label>
+                            <input type="date" id="date-end" class="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 transition">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Semáforo -->
+                <div class="lg:col-span-3 space-y-3 bg-slate-50 dark:bg-[#0f172a] p-5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <h3 class="font-bold text-slate-700 dark:text-slate-300 text-sm mb-3 flex items-center gap-2">🚦 Estados a Mostrar (Semáforo)</h3>
+                    <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-center justify-center md:justify-start w-full py-2">
+                        <!-- Semáforo Literal -->
+                        <div class="flex items-start gap-4 md:gap-6 relative">
+                            <!-- Carcasa -->
+                            <div class="bg-slate-800 dark:bg-black p-3 rounded-[40px] flex flex-col gap-3 border-[6px] border-slate-700 dark:border-slate-800 shadow-2xl relative z-10">
+                                <!-- Luz Verde -->
+                                <label class="cursor-pointer hover:scale-105 transition-transform">
+                                    <input type="checkbox" id="chk-green" checked class="peer sr-only">
+                                    <div class="w-12 h-12 rounded-full border-[3px] border-slate-900 dark:border-slate-950 bg-emerald-950 transition-all duration-300 peer-checked:bg-emerald-500 peer-checked:shadow-[0_0_30px_rgba(16,185,129,0.9),inset_0_0_15px_rgba(255,255,255,0.7)]"></div>
+                                </label>
+                                <!-- Luz Amarilla -->
+                                <label class="cursor-pointer hover:scale-105 transition-transform">
+                                    <input type="checkbox" id="chk-yellow" checked class="peer sr-only">
+                                    <div class="w-12 h-12 rounded-full border-[3px] border-slate-900 dark:border-slate-950 bg-amber-950 transition-all duration-300 peer-checked:bg-amber-400 peer-checked:shadow-[0_0_30px_rgba(251,191,36,0.9),inset_0_0_15px_rgba(255,255,255,0.7)]"></div>
+                                </label>
+                                <!-- Luz Roja -->
+                                <label class="cursor-pointer hover:scale-105 transition-transform">
+                                    <input type="checkbox" id="chk-red" checked class="peer sr-only">
+                                    <div class="w-12 h-12 rounded-full border-[3px] border-slate-900 dark:border-slate-950 bg-red-950 transition-all duration-300 peer-checked:bg-red-500 peer-checked:shadow-[0_0_30px_rgba(239,68,68,0.9),inset_0_0_15px_rgba(255,255,255,0.7)]"></div>
+                                </label>
+                            </div>
+                            
+                            <!-- Poste Decorativo (solo visible en pantallas grandes) -->
+                            <div class="hidden md:block absolute -bottom-10 left-[42px] w-6 h-16 bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-800 dark:to-slate-900 rounded-b shadow-lg -z-10"></div>
+
+                            <!-- Leyendas -->
+                            <div class="flex flex-col gap-3 py-3 h-full">
+                                <div class="h-12 flex items-center">
+                                    <div>
+                                        <div class="text-emerald-700 dark:text-emerald-400 font-bold text-lg leading-none">Continua</div>
+                                        <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">(≥ 3 tareas)</div>
+                                    </div>
+                                </div>
+                                <div class="h-12 flex items-center">
+                                    <div>
+                                        <div class="text-amber-600 dark:text-amber-400 font-bold text-lg leading-none">Fluctuante</div>
+                                        <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">(1 - 2 tareas)</div>
+                                    </div>
+                                </div>
+                                <div class="h-12 flex items-center">
+                                    <div>
+                                        <div class="text-red-600 dark:text-red-400 font-bold text-lg leading-none">Interrumpida</div>
+                                        <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">(0 tareas)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Divisor -->
+                        <div class="w-full md:w-px h-px md:h-48 bg-slate-200 dark:bg-slate-700 mx-0 md:mx-4"></div>
+
+                        <!-- Cartel de No Matriculado -->
+                        <div class="flex items-center justify-center">
+                            <label class="cursor-pointer group flex flex-col items-center gap-3 hover:-translate-y-1 transition-transform">
+                                <input type="checkbox" id="chk-blue" checked class="peer sr-only">
+                                <div class="w-24 h-24 rounded-2xl bg-slate-200 dark:bg-blue-950 border-4 border-slate-300 dark:border-slate-800 transition-all duration-300 flex flex-col items-center justify-center peer-checked:bg-blue-600 peer-checked:border-blue-400 peer-checked:shadow-[0_0_25px_rgba(59,130,246,0.6)] relative overflow-hidden">
+                                    <div class="absolute inset-0 bg-white/20 opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                    <svg class="w-10 h-10 text-slate-400 dark:text-blue-800 peer-checked:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-blue-700 dark:text-blue-400 font-bold leading-tight text-sm">No Matriculado</div>
+                                    <div class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Fuera del Sis.</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="ml-8 mt-6">
+                 <button id="btn-process" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm">
+                    Generar Tabla de Trayectorias ⚡
+                </button>
+            </div>
+        </div>
+
+        <!-- PASO 3 -->
+        <div id="grid-container" class="hidden bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden transition-colors duration-300">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+            
+            <div class="ml-8 flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="bg-emerald-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">3</span>
+                        Resultados Finales
+                    </h2>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Usa las cajas de texto debajo de cada columna para buscar alumnos específicos.</p>
+                </div>
+                
+                <div class="flex flex-col md:flex-row items-end md:items-center gap-3 md:gap-4 w-full md:w-auto">
+                    <div id="color-stats" class="hidden gap-2 text-xs font-bold border border-slate-200 dark:border-slate-700 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 shadow-inner">
+                        <span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-2 py-1.5 rounded flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></span> <span id="stat-green">0</span></span>
+                        <span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-2 py-1.5 rounded flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_5px_#fbbf24]"></span> <span id="stat-yellow">0</span></span>
+                        <span class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-2 py-1.5 rounded flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_#ef4444]"></span> <span id="stat-red">0</span></span>
+                        <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-2 py-1.5 rounded flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_5px_#3b82f6]"></span> <span id="stat-blue">0</span></span>
+                    </div>
+                    <span id="rows-count" class="text-sm text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-800 font-bold whitespace-nowrap">Visibles: 0</span>
+                    <button id="btn-export" disabled class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2.5 rounded-xl transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex-1 md:flex-none">
+                        📥 Descargar Excel
+                    </button>
+                </div>
+            </div>
+
+            <div class="ml-8 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0f172a] shadow-inner max-h-[600px] overflow-y-auto">
+                <table class="w-full text-left border-collapse table-fixed min-w-[1200px] text-[11px]">
+                    <thead class="bg-slate-100 dark:bg-[#1e293b] text-slate-600 dark:text-slate-300 uppercase tracking-wider sticky top-0 z-20 shadow-md">
+                        <tr id="th-headers" class="border-b border-slate-300 dark:border-slate-700 bg-slate-100/95 dark:bg-[#1e293b]/95 backdrop-blur"></tr>
+                        <tr id="th-inputs" class="border-b border-slate-300 dark:border-slate-800 bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur"></tr>
+                    </thead>
+                    <tbody id="tbody-rows" class="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- NOTIFICACIONES -->
+        <div class="bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex gap-4 items-start shadow-inner transition-colors duration-300">
+            <span class="text-xl">🔔</span>
+            <div class="w-full">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Estado del Sistema</h3>
+                <div id="log" class="font-mono text-[11px] max-h-24 overflow-y-auto space-y-1 pr-2">
+                    <div class="text-slate-500 dark:text-slate-400">> Listo para recibir archivos.</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+<script>
+    // LOGICA DARK MODE
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const darkIcon = document.getElementById('theme-toggle-dark-icon');
+    const lightIcon = document.getElementById('theme-toggle-light-icon');
+
+    function updateIcons() {
+        if (document.documentElement.classList.contains('dark')) {
+            darkIcon.classList.add('hidden');
+            lightIcon.classList.remove('hidden');
+        } else {
+            lightIcon.classList.add('hidden');
+            darkIcon.classList.remove('hidden');
+        }
+    }
+
+    if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+    updateIcons();
+
+    themeToggleBtn.addEventListener('click', function() {
+        if (document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('color-theme', 'light');
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('color-theme', 'dark');
+        }
+        updateIcons();
+    });
+
+    const CONFIG_SISTEMA = {
+        columnasExcel: {
+            fechaHora: "Fecha y Hora",
+            nombre: "Nombre",
+            pkUsuario: "Nombre de usuario",
+            correo: "Dirección de correo",
+            itemCalificacion: "Ítem de calificación",
+            notaOriginal: "Calificación original",
+            notaRevisada: "Calificación revisada"
+        },
+        itemsExcluidos: ["total del curso"]
+    };
+
+    const MESES_DICCIONARIO = { "enero":0, "febrero":1, "marzo":2, "abril":3, "mayo":4, "junio":5, "julio":6, "agosto":7, "septiembre":8, "octubre":9, "noviembre":10, "diciembre":11 };
+
+    let listaArchivosCalificaciones = [];
+    let listaMateriasDetectadas = [];
+    let cacheArchivosProcesados = [];
+    let baseEstudiantesMaster = {};
+    let datasetMatrizPlanaFinal = [];
+    let datasetFiltradoActual = [];
+
+    let estadosFiltros = {};
+    let estadoOrden = { colId: null, asc: true };
+let padronGlobal = {};
+
+    const logBox = document.getElementById('log');
+    function printLog(text, isError = false, isSuccess = false) {
+        let colorClass = 'text-sky-600 dark:text-sky-400';
+        if (isError) colorClass = 'text-red-600 dark:text-red-400 font-bold';
+        if (isSuccess) colorClass = 'text-emerald-600 dark:text-emerald-400 font-bold';
+        
+        logBox.innerHTML += `<div class="${colorClass}">> ${text}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // PASO 1: AÑADIR ARCHIVOS
+    document.getElementById('excel-in').addEventListener('change', async (e) => {
+        const files = e.target.files;
+        if(files.length === 0) return;
+
+        for(let i = 0; i < files.length; i++) {
+            if (listaArchivosCalificaciones.length >= 9) {
+                printLog("Límite alcanzado: Máximo 9 archivos permitidos.", true);
+                break;
+            }
+            if(!listaArchivosCalificaciones.some(f => f.name === files[i].name)) {
+                listaArchivosCalificaciones.push(files[i]);
+            }
+        }
+
+        document.getElementById('file-counter').innerText = `${listaArchivosCalificaciones.length} / 9`;
+        renderizarColaArchivos();
+        printLog(`Archivos agregados. Total en cola: ${listaArchivosCalificaciones.length}.`);
+        e.target.value = "";
+    });
+
+    function renderizarColaArchivos() {
+        const queueDiv = document.getElementById('file-queue');
+        if(listaArchivosCalificaciones.length === 0) {
+            queueDiv.innerHTML = '<span class="italic block text-center py-2 text-slate-500">Aún no has seleccionado ningún archivo.</span>';
+        } else {
+            queueDiv.innerHTML = listaArchivosCalificaciones.map((f, idx) => `
+                <div class="flex justify-between items-center text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800 py-1.5 px-2 bg-white dark:bg-slate-900/50 rounded mb-1">
+                    <span class="truncate flex items-center gap-2"><span class="text-emerald-500 dark:text-emerald-400">📄</span> ${idx+1}. ${f.name}</span>
+                    <button onclick="removerArchivo(${idx})" class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 bg-red-100 hover:bg-red-200 dark:bg-red-400/10 dark:hover:bg-red-400/20 px-2 py-0.5 rounded text-xs transition">Quitar</button>
+                </div>
+            `).join('');
+        }
+    }
+
+    function removerArchivo(idx) {
+        listaArchivosCalificaciones.splice(idx, 1);
+        document.getElementById('file-counter').innerText = `${listaArchivosCalificaciones.length} / 9`;
+        renderizarColaArchivos();
+    }
+
+    function parseFechaMoodle(strTexto) {
+        try {
+            if(!strTexto) return null;
+            let limpio = strTexto.toString().replace(/\s+/g, ' ').toLowerCase().trim();
+            let partes = limpio.split(',');
+            if(partes.length < 2) return null;
+            let fragmentos = partes[1].trim().split(' de ');
+            if(fragmentos.length !== 3) return null;
+
+            let dia = parseInt(fragmentos[0]);
+            let mesIdx = MESES_DICCIONARIO[fragmentos[1].trim()];
+            let anio = parseInt(fragmentos[2].split(' ')[0]);
+            if(mesIdx === undefined) return null;
+
+            let hora = 12, min = 0;
+            if(partes[2]) {
+                let hBits = partes[2].trim().split(':');
+                hora = parseInt(hBits[0]) || 12;
+                min = parseInt(hBits[1]) || 0;
+            }
+            return new Date(anio, mesIdx, dia, hora, min, 0);
+        } catch(e) { return null; }
+    }
+
+    function limpiarNota(v) {
+        if(v === undefined || v === null || v === '-') return null;
+        let n = parseFloat(v.toString().replace(',', '.').trim());
+        return isNaN(n) ? null : n;
+    }
+
+    // PASO 2: PROCESAR ARCHIVOS Y GENERAR TABLA
+    document.getElementById('btn-process').addEventListener('click', async () => {
+        if(listaArchivosCalificaciones.length === 0) { alert("Por favor sube al menos un archivo Excel en el Paso 1."); return; }
+
+        printLog("Iniciando análisis de trayectorias...");
+        cacheArchivosProcesados = [];
+        listaMateriasDetectadas = [];
+
+        for(let file of listaArchivosCalificaciones) {
+            let materia = file.name.replace(/\.[^/.]+$/, "");
+            listaMateriasDetectadas.push(materia);
+
+            await new Promise(r => setTimeout(r, 10));
+
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array', raw: false });
+            const filasRaw = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+
+            cacheArchivosProcesados.push({ materia, filas: filasRaw });
+        }
+
+        calcularMatrizTrayectorias();
+        
+        setTimeout(() => {
+            document.getElementById('grid-container').scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+    });
+
+    function calcularMatrizTrayectorias() {
+        const tsMin = document.getElementById('date-start').value ? new Date(document.getElementById('date-start').value + "T00:00:00").getTime() : null;
+        const tsMax = document.getElementById('date-end').value ? new Date(document.getElementById('date-end').value + "T23:59:59").getTime() : null;
+
+        baseEstudiantesMaster = {};
+        padronGlobal = {};
+        let archivosMoodle = [];
+
+        // 1. Filtrar y procesar Padrón
+        cacheArchivosProcesados.forEach(libro => {
+            const filasRaw = libro.filas;
+            if(filasRaw.length === 0) return;
+
+            // Detectar Padrón
+            let isPadron = false;
+            let headerIdx = -1;
+            for(let r=0; r<Math.min(filasRaw.length, 5); r++) {
+                let rowStr = (filasRaw[r] || []).join(" ").toLowerCase();
+                if(rowStr.includes("documento") && rowStr.includes("alumno") && (rowStr.includes("cuil") || rowStr.includes("curso"))) {
+                    isPadron = true;
+                    headerIdx = r;
+                    break;
+                }
+            }
+
+            if(isPadron) {
+                printLog(`✅ Padrón Maestro detectado: ${libro.materia}`);
+                let headers = filasRaw[headerIdx];
+                for(let r = headerIdx + 1; r < filasRaw.length; r++) {
+                    let row = filasRaw[r];
+                    if(!row || row.length === 0) continue;
+                    
+                    let obj = {};
+                    headers.forEach((h, i) => { if(h) obj[h.toString().trim()] = row[i]; });
+                    
+                    let rawDoc = (obj["Documento"] || "").toString();
+                    let dniRaw = rawDoc.replace(/\D/g, ''); 
+                    let nombreRaw = (obj["Alumno"] || "").toString();
+                    
+                    if (dniRaw || nombreRaw) {
+                        let telKey = Object.keys(obj).find(k => k.toLowerCase().includes('tel') || k.toLowerCase().includes('celular'));
+                        padronGlobal[dniRaw] = {
+                            cuil: obj["Cuil"] || obj["CUIL"] || "",
+                            curso: obj["Curso"] || obj["CURSO"] || "",
+                            telefono: telKey ? obj[telKey] : "",
+                            nombre: nombreRaw
+                        };
+                    }
+                }
+                // Remover de listaMateriasDetectadas
+                listaMateriasDetectadas = listaMateriasDetectadas.filter(m => m !== libro.materia);
+            } else {
+                archivosMoodle.push(libro);
+            }
+        });
+
+        // 2. Procesar materias Moodle
+        archivosMoodle.forEach(libro => {
+            const filasRaw = libro.filas;
+            const cabecera = filasRaw[0].map(h => h ? h.toString().trim() : "");
+            let idxFecha = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.fechaHora);
+            let idxNombre = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.nombre);
+            let idxPk = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.pkUsuario);
+            let idxCorreo = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.correo);
+            let idxItem = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.itemCalificacion);
+            let idxNotaOrig = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.notaOriginal);
+            let idxNotaRev = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.notaRevisada);
+
+            if(idxPk === -1) idxPk = cabecera.findIndex(h => h.toLowerCase().includes("usuario"));
+            if(idxItem === -1) idxItem = cabecera.findIndex(h => h.toLowerCase().includes("ítem") || h.toLowerCase().includes("item"));
+
+            for(let i = 1; i < filasRaw.length; i++) {
+                const f = filasRaw[i];
+                if(!f || !f[idxPk]) continue;
+
+                let pk = f[idxPk].toString().trim();
+                let nombre = idxNombre !== -1 && f[idxNombre] ? f[idxNombre].toString().trim() : pk;
+                let correo = idxCorreo !== -1 && f[idxCorreo] ? f[idxCorreo].toString().trim() : "---";
+
+                if(!baseEstudiantesMaster[pk]) {
+                    baseEstudiantesMaster[pk] = { nombre, nombre_usuario: pk, correo, materiasMap: {} };
+                }
+
+                if(!baseEstudiantesMaster[pk].materiasMap[libro.materia]) {
+                    baseEstudiantesMaster[pk].materiasMap[libro.materia] = { matriculado: true, items: {}, maxSemana: 0 };
+                }
+
+                if(!f[idxItem]) continue;
+                let item = f[idxItem].toString().trim();
+                if(CONFIG_SISTEMA.itemsExcluidos.includes(item.toLowerCase())) continue;
+
+                let semanaMatch = item.match(/semana\s*(\d+)/i);
+                let semanaNum = semanaMatch ? parseInt(semanaMatch[1], 10) : 0;
+
+                let timestamp = 0, dentroRango = true;
+                if(idxFecha !== -1 && f[idxFecha]) {
+                    let dObj = parseFechaMoodle(f[idxFecha]);
+                    if(dObj) {
+                        timestamp = dObj.getTime();
+                        if(tsMin && timestamp < tsMin) dentroRango = false;
+                        if(tsMax && timestamp > tsMax) dentroRango = false;
+                    }
+                }
+
+                let nOrig = idxNotaOrig !== -1 ? limpiarNota(f[idxNotaOrig]) : null;
+                let nRev = idxNotaRev !== -1 ? limpiarNota(f[idxNotaRev]) : null;
+                let notaDefinitiva = nRev !== null ? nRev : nOrig;
+
+                if(dentroRango && notaDefinitiva !== null) {
+                    let exist = baseEstudiantesMaster[pk].materiasMap[libro.materia].items[item];
+                    if(!exist || notaDefinitiva > exist.notaFinal || (notaDefinitiva === exist.notaFinal && timestamp > exist.ts)) {
+                        baseEstudiantesMaster[pk].materiasMap[libro.materia].items[item] = { notaFinal: notaDefinitiva, ts: timestamp, semana: semanaNum };
+                    }
+                    if(semanaNum > baseEstudiantesMaster[pk].materiasMap[libro.materia].maxSemana) {
+                        baseEstudiantesMaster[pk].materiasMap[libro.materia].maxSemana = semanaNum;
+                    }
+                }
+            }
+        });
+
+        // Enriquecer datos con Padrón
+        Object.keys(baseEstudiantesMaster).forEach(pk => {
+            let est = baseEstudiantesMaster[pk];
+            let dniNum = pk.replace(/\D/g, '');
+            let match = padronGlobal[dniNum];
+            
+            if(!match) {
+                let nameMoodle = est.nombre.toLowerCase().replace(/[^a-z]/g, '');
+                let foundKey = Object.keys(padronGlobal).find(k => {
+                    if(!padronGlobal[k].nombre) return false;
+                    let namePadron = padronGlobal[k].nombre.toLowerCase().replace(/[^a-z]/g, '');
+                    return namePadron !== "" && (namePadron === nameMoodle || namePadron.includes(nameMoodle) || nameMoodle.includes(namePadron));
+                });
+                if(foundKey) match = padronGlobal[foundKey];
+            }
+
+            if(match) {
+                est.cuil = match.cuil;
+                est.curso = match.curso;
+                est.telefono = match.telefono;
+            } else {
+                est.cuil = "—"; est.curso = "—"; est.telefono = "—";
+            }
+        });
+
+        datasetMatrizPlanaFinal = Object.values(baseEstudiantesMaster).map(est => {
+            let fila = { nombre: est.nombre, nombre_usuario: est.nombre_usuario, correo: est.correo, __estadosMateria: {}, __cantidadesMateria: {}, __maxSemanaMateria: {} };
+
+            listaMateriasDetectadas.forEach(mat => {
+                let metadataMateria = est.materiasMap[mat];
+
+                if (!metadataMateria) {
+                    fila.__estadosMateria[mat] = "🔵 No Matriculado";
+                    fila.__cantidadesMateria[mat] = 0;
+                    fila.__maxSemanaMateria[mat] = 0;
+                    fila[mat] = `🔵 No Matriculado\n(Sin registros)`;
+                } else {
+                    let cant = Object.keys(metadataMateria.items).length;
+                    let maxSemana = metadataMateria.maxSemana;
+                    let semaforo = "🔴 Interrumpida";
+                    if(cant >= 3) semaforo = "🟢 Continua";
+                    else if(cant >= 1) semaforo = "🟡 Fluctuante";
+
+                    fila.__estadosMateria[mat] = semaforo;
+                    fila.__cantidadesMateria[mat] = cant;
+                    fila.__maxSemanaMateria[mat] = maxSemana;
+                    
+                    let textoSemana = maxSemana > 0 ? `Llegó a Semana ${maxSemana}` : `Sin entregas`;
+                    fila[mat] = `${semaforo}\n(${textoSemana})`;
+                }
+            });
+            return fila;
+        });
+
+        document.getElementById('status-materias').innerText = `Materias procesadas: ${listaMateriasDetectadas.length}`;
+        document.getElementById('status-alumnos').innerText = `Alumnos detectados: ${datasetMatrizPlanaFinal.length}`;
+        printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPlanaFinal.length} estudiantes.`, false, true);
+
+        document.getElementById('grid-container').classList.remove('hidden');
+        document.getElementById('btn-export').removeAttribute('disabled');
+
+        construirHeadersGridDinamico();
+        aplicarFiltrosYOrdenCompleto();
+    }
+
+    function construirHeadersGridDinamico() {
+        const rowHeaders = document.getElementById('th-headers');
+        const rowInputs = document.getElementById('th-inputs');
+        rowHeaders.innerHTML = ""; rowInputs.innerHTML = "";
+
+        let cols = [
+            { id: "__num", label: "#", width: "w-[45px]" },
+            { id: "nombre", label: "Nombre", width: "w-[160px]" },
+            { id: "nombre_usuario", label: "Nombre de\nusuario (DNI)", width: "w-[120px]" },
+            { id: "correo", label: "Correo electrónico", width: "w-[160px]" }
+        ];
+
+        listaMateriasDetectadas.forEach(mat => {
+            cols.push({ id: mat, label: mat, width: "w-[200px]" });
+        });
+
+        cols.forEach(col => {
+            rowHeaders.innerHTML += `
+                <th class="p-2 border-r border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] whitespace-pre-line leading-tight ${col.width}">
+                    <div class="flex items-center justify-between">
+                        <span>${col.label}</span>
+                        ${col.id !== '__num' ? `<button data-sort="${col.id}" class="grid-sort-btn text-slate-400 hover:text-slate-800 dark:hover:text-white font-mono text-[10px] bg-slate-200 dark:bg-slate-800 px-1.5 rounded transition">↕️</button>` : ''}
+                    </div>
+                </th>
+            `;
+
+            rowInputs.innerHTML += `
+                <td class="p-1.5 border-r border-slate-300 dark:border-slate-800 ${col.width}">
+                    ${col.id !== '__num' ? `<input type="text" placeholder="Filtrar..." data-col="${col.id}" class="grid-filter-input w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-800 dark:text-slate-200 text-[10px] focus:outline-none focus:border-emerald-500 transition shadow-inner placeholder-slate-400 dark:placeholder-slate-600">` : ''}
+                </td>
+            `;
+        });
+
+        document.querySelectorAll('.grid-filter-input').forEach(i => {
+            i.addEventListener('input', (e) => {
+                estadosFiltros[e.target.getAttribute('data-col')] = e.target.value.toLowerCase().trim();
+                aplicarFiltrosYOrdenCompleto();
+            });
+        });
+
+        document.querySelectorAll('.grid-sort-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                let cid = b.getAttribute('data-sort');
+                estadoOrden.asc = (estadoOrden.colId === cid) ? !estadoOrden.asc : true;
+                estadoOrden.colId = cid;
+                aplicarFiltrosYOrdenCompleto();
+            });
+        });
+    }
+
+    function aplicarFiltrosYOrdenCompleto() {
+        datasetFiltradoActual = datasetMatrizPlanaFinal.filter(fila => {
+            return Object.keys(estadosFiltros).every(cid => {
+                if(!estadosFiltros[cid]) return true;
+                return (fila[cid] || "").toString().toLowerCase().includes(estadosFiltros[cid]);
+            });
+        });
+
+        if(estadoOrden.colId) {
+            let cid = estadoOrden.colId;
+            datasetFiltradoActual.sort((a,b) => {
+                let vA = (a[cid] || "").toString().toLowerCase();
+                let vB = (b[cid] || "").toString().toLowerCase();
+                return vA.localeCompare(vB) * (estadoOrden.asc ? 1 : -1);
+            });
+        }
+
+        renderizarFilasGridPantalla();
+    }
+
+    function renderizarFilasGridPantalla() {
+        const tbody = document.getElementById('tbody-rows');
+
+        const flgGreen = document.getElementById('chk-green').checked;
+        const flgYellow = document.getElementById('chk-yellow').checked;
+        const flgRed = document.getElementById('chk-red').checked;
+        const flgBlue = document.getElementById('chk-blue').checked;
+
+        let cV = 0, cA = 0, cR = 0, cB = 0;
+        datasetFiltradoActual.forEach(fila => {
+            listaMateriasDetectadas.forEach(mat => {
+                let st = fila.__estadosMateria[mat];
+                if(st === "🟢 Continua") cV++;
+                else if(st === "🟡 Fluctuante") cA++;
+                else if(st === "🔴 Interrumpida") cR++;
+                else if(st === "🔵 No Matriculado") cB++;
+            });
+        });
+
+        document.getElementById('stat-green').innerText = cV;
+        document.getElementById('stat-yellow').innerText = cA;
+        document.getElementById('stat-red').innerText = cR;
+        document.getElementById('stat-blue').innerText = cB;
+        document.getElementById('color-stats').classList.remove('hidden');
+        document.getElementById('color-stats').classList.add('flex');
+
+        document.getElementById('rows-count').innerText = `Alumnos: ${datasetFiltradoActual.length}`;
+        tbody.innerHTML = "";
+
+        datasetFiltradoActual.slice(0, 100).forEach((fila, index) => {
+            let tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-100 dark:hover:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800/50 transition";
+
+            // 1. #
+            let tdNum = document.createElement('td');
+            tdNum.className = "p-2 border-r border-slate-300 dark:border-slate-800/50 text-slate-500 dark:text-slate-500 font-mono text-center";
+            tdNum.innerText = index + 1;
+            tr.appendChild(tdNum);
+
+            // 2. Nombre
+            let tdNom = document.createElement('td');
+            tdNom.className = "p-2 border-r border-slate-300 dark:border-slate-800/50 truncate font-semibold text-slate-800 dark:text-slate-200";
+            tdNom.innerText = fila.nombre;
+            tr.appendChild(tdNom);
+
+            // 3. Nombre de Usuario
+            let tdPk = document.createElement('td');
+            tdPk.className = "p-2 border-r border-slate-300 dark:border-slate-800/50 truncate font-mono text-amber-600 dark:text-amber-400/80";
+            tdPk.innerText = fila.nombre_usuario;
+            tr.appendChild(tdPk);
+
+            // 4. Correo
+            let tdCor = document.createElement('td');
+            tdCor.className = "p-2 border-r border-slate-300 dark:border-slate-800/50 truncate text-slate-500 dark:text-slate-400 text-[10px]";
+            tdCor.innerText = fila.correo;
+            tr.appendChild(tdCor);
+
+            // Materias Dinámicas
+            listaMateriasDetectadas.forEach(mat => {
+                let tdMat = document.createElement('td');
+                tdMat.className = "p-2 border-r border-slate-300 dark:border-slate-800/50 text-[10px] break-words whitespace-pre-line leading-relaxed transition-all duration-300";
+
+                let st = fila.__estadosMateria[mat] || "🔴 Interrumpida";
+                tdMat.innerText = fila[mat];
+
+                let estaEncendido = (st === "🟢 Continua" && flgGreen) ||
+                                     (st === "🟡 Fluctuante" && flgYellow) ||
+                                     (st === "🔴 Interrumpida" && flgRed) ||
+                                     (st === "🔵 No Matriculado" && flgBlue);
+
+                if (!estaEncendido) {
+                    tdMat.className += " bg-slate-100 dark:bg-[#0f172a] text-slate-400 dark:text-slate-700 line-through opacity-40 border-l border-slate-300 dark:border-slate-800";
+                } else {
+                    if(st === "🟢 Continua") tdMat.className += " bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 border-l-2 border-l-emerald-500 font-medium";
+                    else if(st === "🟡 Fluctuante") tdMat.className += " bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 border-l-2 border-l-amber-500 font-medium";
+                    else if(st === "🔴 Interrumpida") tdMat.className += " bg-red-50 dark:bg-red-950/10 text-red-600 dark:text-red-400 border-l-2 border-l-red-500";
+                    else if(st === "🔵 No Matriculado") tdMat.className += " bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border-l-2 border-l-blue-500 font-medium opacity-80";
+                }
+
+                tr.appendChild(tdMat);
+            });
+
+            tbody.appendChild(tr);
+        });
+        
+        if (datasetFiltradoActual.length > 100) {
+            let trMsg = document.createElement('tr');
+            trMsg.innerHTML = `<td colspan="${listaMateriasDetectadas.length + 4}" class="p-4 text-center text-slate-500 dark:text-slate-500 text-xs italic border-t border-slate-200 dark:border-slate-800">Mostrando los primeros 100 resultados. Usa los filtros o exporta a Excel para ver el resto.</td>`;
+            tbody.appendChild(trMsg);
+        }
+    }
+
+    document.getElementById('chk-green').addEventListener('change', renderizarFilasGridPantalla);
+    document.getElementById('chk-yellow').addEventListener('change', renderizarFilasGridPantalla);
+    document.getElementById('chk-red').addEventListener('change', renderizarFilasGridPantalla);
+    document.getElementById('chk-blue').addEventListener('change', renderizarFilasGridPantalla);
+
+    // EXPORTADOR
+    document.getElementById('btn-export').addEventListener('click', () => {
+        if(datasetFiltradoActual.length === 0) return;
+        
+        printLog("Preparando archivo Excel para descargar...", false, false);
+        const wb = XLSX.utils.book_new();
+
+        // 1. HOJA DE RESUMEN GENERAL (Matriz de todas las materias)
+        let aoaResumen = [];
+        aoaResumen.push([`REPORTE DE TRAYECTORIAS EAD - RESUMEN GENERAL`]);
+        aoaResumen.push([`Vista panorámica de todas las materias`]);
+        aoaResumen.push([]);
+        
+        let headersResumen = ["ALUMNO/A", "DNI", "CORREO", "CURSO", "TELÉFONO"];
+        listaMateriasDetectadas.forEach(mat => {
+            headersResumen.push(`ESTADO (${mat})`);
+            headersResumen.push(`TAREAS (${mat})`);
+        });
+        aoaResumen.push(headersResumen);
+
+        datasetFiltradoActual.forEach(f => {
+            let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+            let cuil = estMaster ? estMaster.cuil : "—";
+            let curso = estMaster ? estMaster.curso : "—";
+            let telefono = estMaster ? estMaster.telefono : "—";
+            
+            let filaArray = [f.nombre, f.nombre_usuario, f.correo, curso, telefono];
+            
+            listaMateriasDetectadas.forEach(mat => {
+                let stRaw = f.__estadosMateria[mat] || "Interrumpida";
+                let estadoLimpio = stRaw.includes(" ") ? stRaw.split(' ')[1] : stRaw;
+                filaArray.push(estadoLimpio);
+                filaArray.push(f.__cantidadesMateria[mat] || 0);
+            });
+            aoaResumen.push(filaArray);
+        });
+
+        const ws1 = XLSX.utils.aoa_to_sheet(aoaResumen);
+        
+        // Estilo encabezados Hoja 1
+        let numColsResumen = 5 + (listaMateriasDetectadas.length * 2);
+        
+        if(ws1['A1']) ws1['A1'].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14 }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { vertical: "center" } };
+        ws1['!merges'] = [
+            { s: {r: 0, c: 0}, e: {r: 0, c: numColsResumen - 1} },
+            { s: {r: 1, c: 0}, e: {r: 1, c: numColsResumen - 1} }
+        ];
+        if(ws1['A2']) ws1['A2'].s = { font: { italic: true, color: { rgb: "1A3A5C" }, sz: 11 } };
+        
+        for(let C = 0; C < numColsResumen; ++C) {
+            let addr = XLSX.utils.encode_cell({r: 3, c: C});
+            if(ws1[addr]) {
+                ws1[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { horizontal: "center", vertical: "center" } };
+            }
+        }
+
+        for(let R = 4; R < aoaResumen.length; ++R) {
+            for(let C = 0; C < numColsResumen; ++C) {
+                let addr = XLSX.utils.encode_cell({r: R, c: C});
+                if(!ws1[addr]) continue;
+                
+                let cellStyle = { alignment: { vertical: "center" }, border: { bottom: { style: "thin", color: { rgb: "E5E7EB" } } } };
+                
+                // Colorizar celdas de estado (columnas 5, 7, 9...)
+                if(C >= 5 && C % 2 !== 0) {
+                    let val = aoaResumen[R][C];
+                    if(val === "Continua") { cellStyle.fill = { fgColor: { rgb: "D5F5E3" } }; cellStyle.font = { color: { rgb: "196F3D" }, bold: true }; }
+                    else if(val === "Fluctuante") { cellStyle.fill = { fgColor: { rgb: "FCF3CF" } }; cellStyle.font = { color: { rgb: "D68910" }, bold: true }; }
+                    else if(val === "Interrumpida") { cellStyle.fill = { fgColor: { rgb: "FADBD8" } }; cellStyle.font = { color: { rgb: "922B21" }, bold: true }; }
+                    else if(val === "Matriculado") { cellStyle.fill = { fgColor: { rgb: "EBF5FB" } }; cellStyle.font = { color: { rgb: "2874A6" } }; }
+                }
+                ws1[addr].s = cellStyle;
+            }
+        }
+
+        let cols1 = [{wch: 35}, {wch: 15}, {wch: 35}, {wch: 15}, {wch: 30}];
+        for(let i=0; i < listaMateriasDetectadas.length; i++) {
+            cols1.push({wch: 22}); // ESTADO
+            cols1.push({wch: 12}); // TAREAS
+        }
+        ws1['!cols'] = cols1;
+        
+        let lastColStr1 = XLSX.utils.encode_col(numColsResumen - 1);
+        ws1['!autofilter'] = { ref: `A4:${lastColStr1}${aoaResumen.length}` };
+        ws1['!views'] = [{state: 'frozen', xSplit: 5, ySplit: 4, topLeftCell: 'F5', activeCell: 'F5'}];
+        
+        XLSX.utils.book_append_sheet(wb, ws1, "Resumen General");
+
+        // 2. HOJAS POR MATERIA (Dashboards Premium)
+        listaMateriasDetectadas.forEach(mat => {
+            let alumnosMateria = datasetFiltradoActual.filter(f => {
+                let est = baseEstudiantesMaster[f.nombre_usuario];
+                return est && est.materiasMap[mat] && est.materiasMap[mat].matriculado;
+            });
+
+            if(alumnosMateria.length === 0) return;
+
+            let cV = 0, cA = 0, cR = 0;
+            alumnosMateria.forEach(f => {
+                let st = f.__estadosMateria[mat] || "";
+                if(st.includes("Continua")) cV++;
+                else if(st.includes("Fluctuante")) cA++;
+                else if(st.includes("Interrumpida")) cR++;
+            });
+            let total = cV + cA + cR;
+            let pV = total > 0 ? Math.round((cV/total)*100) : 0;
+            let pA = total > 0 ? Math.round((cA/total)*100) : 0;
+            let pR = total > 0 ? Math.round((cR/total)*100) : 0;
+
+            let aoa = [];
+            aoa.push([`REPORTE DE TRAYECTORIAS EAD - ${mat.toUpperCase()}`]);
+            aoa.push([`Historial de notas · Análisis de Trayectorias`]);
+            aoa.push([]);
+            // Ajustar merges (ahora son 10 columnas: A a J)
+            aoa.push(["", "👥 TOTAL ALUMNOS", "🟢 CONTINUA", "", "🟠 FLUCTUANTE", "", "🔴 INTERRUMPIDA", "", "", ""]);
+            aoa.push(["", total, cV, "", cA, "", cR, "", "", ""]);
+            aoa.push(["", "100% del total", `${pV}% del total`, "", `${pA}% del total`, "", `${pR}% del total`, "", "", ""]);
+            aoa.push([]);
+            aoa.push(["#", "ALUMNO/A", "DNI", "CORREO", "CURSO", "TELÉFONO", "ESTADO", "N° TAREAS", "ÚLTIMA SEMANA", "PROMEDIO"]);
+
+            let startIndexData = 8;
+            alumnosMateria.forEach((f, idx) => {
+                let stRaw = f.__estadosMateria[mat] || "🔴 Interrumpida";
+                let tareas = f.__cantidadesMateria[mat] || 0;
+                let progreso = f.__maxSemanaMateria[mat] > 0 ? `Sem. ${f.__maxSemanaMateria[mat]}` : `—`;
+                
+                // Calcular promedio real
+                let promedio = "—";
+                let estData = baseEstudiantesMaster[f.nombre_usuario].materiasMap[mat];
+                if (estData && estData.items) {
+                    let suma = 0; let count = 0;
+                    Object.values(estData.items).forEach(item => {
+                        if (item.notaFinal !== null && !isNaN(item.notaFinal)) {
+                            suma += parseFloat(item.notaFinal);
+                            count++;
+                        }
+                    });
+                    if(count > 0) promedio = (suma/count).toFixed(2);
+                }
+
+                let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+                let cuil = estMaster ? estMaster.cuil : "—";
+                let curso = estMaster ? estMaster.curso : "—";
+                let telefono = estMaster ? estMaster.telefono : "—";
+
+                aoa.push([idx + 1, f.nombre, f.nombre_usuario, f.correo, curso, telefono, stRaw.toUpperCase(), tareas, progreso, promedio]);
+            });
+
+            const wsMat = XLSX.utils.aoa_to_sheet(aoa);
+
+            // Estilos Dashboard
+            if(wsMat['A1']) wsMat['A1'].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14 }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { vertical: "center" } };
+            wsMat['!merges'] = [
+                { s: {r: 0, c: 0}, e: {r: 0, c: 9} },
+                { s: {r: 1, c: 0}, e: {r: 1, c: 9} }
+            ];
+            if(wsMat['A2']) wsMat['A2'].s = { font: { italic: true, color: { rgb: "1A3A5C" }, sz: 11 } };
+            
+            // Colores de las estadísticas (Ajustado B4 en vez de A4)
+            const colorStats = { "B4": "2E86AB", "C4": "27AE60", "E4": "E67E22", "G4": "E74C3C" };
+            for (let [cell, color] of Object.entries(colorStats)) {
+                if(wsMat[cell]) wsMat[cell].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: color } }, alignment: { horizontal: "center" } };
+                let numCell = cell.replace('4', '5');
+                if(wsMat[numCell]) wsMat[numCell].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: "center" } };
+                let percCell = cell.replace('4', '6');
+                if(wsMat[percCell]) wsMat[percCell].s = { font: { color: { rgb: "555555" } }, alignment: { horizontal: "center" } };
+            }
+
+            for(let c=0; c<=9; c++) {
+                let addr = XLSX.utils.encode_cell({r: 7, c: c});
+                if(wsMat[addr]) wsMat[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { horizontal: "center" } };
+            }
+
+            for(let r=startIndexData; r < aoa.length; r++) {
+                let rowData = aoa[r];
+                let estado = rowData[6] || "";
+                let bgRow = "FFFFFF";
+                if(estado.includes("CONTINUA")) bgRow = "D5F5E3"; 
+                else if(estado.includes("FLUCTUANTE")) bgRow = "FCF3CF"; 
+                else if(estado.includes("INTERRUMPIDA")) bgRow = "FADBD8";
+
+                for(let c=0; c<=9; c++) {
+                    let addr = XLSX.utils.encode_cell({r: r, c: c});
+                    if(!wsMat[addr]) continue;
+                    wsMat[addr].s = { fill: { fgColor: { rgb: bgRow } }, alignment: { vertical: "center" }, border: { bottom: { style: "thin", color: { rgb: "E5E7EB" } } } };
+                    if(c===6) wsMat[addr].s.font = { bold: true, color: { rgb: estado.includes("CONTINUA")?"196F3D":estado.includes("FLUCTUANTE")?"D68910":"922B21" } }; // ESTADO is col G
+                    if(c===9 && rowData[9] !== "—") wsMat[addr].s.font = { bold: true };
+                }
+            }
+
+            wsMat['!cols'] = [
+                {wch: 5},  // #
+                {wch: 35}, // ALUMNO
+                {wch: 15}, // DNI
+                {wch: 35}, // CORREO
+                {wch: 15}, // CURSO
+                {wch: 30}, // TELEFONO
+                {wch: 22}, // ESTADO
+                {wch: 16}, // TAREAS
+                {wch: 15}, // SEMANA
+                {wch: 18}  // PROMEDIO
+            ];
+            
+            // Activar Filtros Automáticos en la fila 8 (A8:J...)
+            wsMat['!autofilter'] = { ref: `A8:J${aoa.length}` };
+            wsMat['!views'] = [{state: 'frozen', xSplit: 6, ySplit: 8, topLeftCell: 'G9', activeCell: 'G9'}];
+
+            let safeName = mat.substring(0, 31).replace(/[\\/?*\[\]]/g, '');
+            XLSX.utils.book_append_sheet(wb, wsMat, safeName);
+        });
+
+        // 3. HOJA FINAL: DETALLE DOCENTES (Matriz de semanas)
+        let aoaDocente = [];
+        aoaDocente.push([`REPORTE DE TRAYECTORIAS EAD - DETALLE DOCENTES`]);
+        aoaDocente.push([`Seguimiento semanal de actividades por estudiante y materia`]);
+        aoaDocente.push([]);
+        
+        let maxSemanasDetectadas = 0;
+        datasetFiltradoActual.forEach(f => {
+            listaMateriasDetectadas.forEach(mat => {
+                let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+                if(estMaster && estMaster.materiasMap[mat] && estMaster.materiasMap[mat].matriculado) {
+                    Object.values(estMaster.materiasMap[mat].items).forEach(item => {
+                        if(item.semana > maxSemanasDetectadas) maxSemanasDetectadas = item.semana;
+                    });
+                }
+            });
+        });
+
+        let headersDocente = ["ALUMNO/A", "DNI / USUARIO", "MATERIA"];
+        for(let i = 1; i <= maxSemanasDetectadas; i++) {
+            headersDocente.push(`Semana ${i}`);
+        }
+        aoaDocente.push(headersDocente);
+
+        let dataStartIndex = 4;
+        let prevStudent = null;
+        let bgWhite = "FFFFFF", bgGray = "F8FAFC";
+        let currentBg = bgWhite;
+
+        datasetFiltradoActual.forEach(f => {
+            if(prevStudent !== f.nombre_usuario) {
+                currentBg = (currentBg === bgWhite) ? bgGray : bgWhite;
+                prevStudent = f.nombre_usuario;
+            }
+
+            listaMateriasDetectadas.forEach(mat => {
+                let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+                if(!estMaster) return;
+                let metadataMateria = estMaster.materiasMap[mat];
+                if(!metadataMateria || !metadataMateria.matriculado) return; 
+
+                let filaArray = [f.nombre, f.nombre_usuario, mat];
+                let tempSemanas = {};
+                for(let i=1; i<=maxSemanasDetectadas; i++) tempSemanas[i] = [];
+                
+                Object.values(metadataMateria.items).forEach(itemData => {
+                    if(itemData.semana > 0) {
+                        let notaStr = itemData.notaFinal !== null ? itemData.notaFinal : "Entregado";
+                        let fechaStr = "";
+                        if(itemData.ts && itemData.ts > 0) {
+                            let fObj = new Date(itemData.ts);
+                            if(!isNaN(fObj.getTime())) {
+                                let dia = fObj.getDate().toString().padStart(2, '0');
+                                let mes = (fObj.getMonth() + 1).toString().padStart(2, '0');
+                                fechaStr = ` (${dia}/${mes})`;
+                            }
+                        }
+                        tempSemanas[itemData.semana].push(`${notaStr}${fechaStr}`);
+                    }
+                });
+                
+                for(let i=1; i<=maxSemanasDetectadas; i++) {
+                    filaArray.push(tempSemanas[i].join('\n'));
+                }
+                filaArray.push(currentBg); // Hidden info
+                aoaDocente.push(filaArray);
+            });
+        });
+
+        const ws2 = XLSX.utils.aoa_to_sheet(aoaDocente.map(r => r.slice(0, 3 + maxSemanasDetectadas)));
+        
+        if(ws2['A1']) ws2['A1'].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14 }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { vertical: "center" } };
+        ws2['!merges'] = [
+            { s: {r: 0, c: 0}, e: {r: 0, c: 2 + maxSemanasDetectadas} },
+            { s: {r: 1, c: 0}, e: {r: 1, c: 2 + maxSemanasDetectadas} }
+        ];
+        if(ws2['A2']) ws2['A2'].s = { font: { italic: true, color: { rgb: "1A3A5C" }, sz: 11 } };
+        
+        for(let C = 0; C <= 2 + maxSemanasDetectadas; ++C) {
+            let addr = XLSX.utils.encode_cell({r: 3, c: C});
+            if(ws2[addr]) ws2[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { horizontal: "center" } };
+        }
+
+        for(let R = dataStartIndex; R < aoaDocente.length; ++R) {
+            let bgFila = aoaDocente[R][3 + maxSemanasDetectadas];
+            for(let C = 0; C <= 2 + maxSemanasDetectadas; ++C) {
+                let addr = XLSX.utils.encode_cell({r: R, c: C});
+                if(!ws2[addr]) continue;
+                
+                let cellStyle = { fill: { fgColor: { rgb: bgFila } }, alignment: { vertical: "top" }, border: { bottom: { style: "thin", color: { rgb: "E5E7EB" } } } };
+                
+                if(C >= 3) {
+                    cellStyle.alignment.wrapText = true;
+                    let val = aoaDocente[R][C] || "";
+                    if(val) {
+                        let hasRed = false; let hasGreen = false; let isEntregado = false;
+                        if(val.includes("Entregado")) isEntregado = true;
+                        
+                        let notasArray = val.split('\n');
+                        for(let line of notasArray) {
+                            let n = parseFloat(line.split(' ')[0]);
+                            if(!isNaN(n)) {
+                                if(n < 7) hasRed = true;
+                                else if(n >= 7) hasGreen = true;
+                            }
+                        }
+                        
+                        if(hasRed) { cellStyle.fill.fgColor.rgb = "FADBD8"; cellStyle.font = { color: { rgb: "922B21" }, bold: true }; }
+                        else if(hasGreen) { cellStyle.fill.fgColor.rgb = "D5F5E3"; cellStyle.font = { color: { rgb: "196F3D" }, bold: true }; }
+                        else if(isEntregado) { cellStyle.fill.fgColor.rgb = "FCF3CF"; cellStyle.font = { color: { rgb: "B9770E" }, bold: true }; }
+                    }
+                }
+                
+                ws2[addr].s = cellStyle;
+            }
+        }
+
+        let cols2 = [{wch: 35}, {wch: 15}, {wch: 30}];
+        for(let i=0; i < maxSemanasDetectadas; i++) cols2.push({wch: 16});
+        ws2['!cols'] = cols2;
+        
+        let lastColStr = XLSX.utils.encode_col(2 + maxSemanasDetectadas);
+        ws2['!autofilter'] = { ref: `A4:${lastColStr}${aoaDocente.length}` };
+        ws2['!views'] = [{state: 'frozen', xSplit: 3, ySplit: 4, topLeftCell: 'D5', activeCell: 'D5'}];
+
+        XLSX.utils.book_append_sheet(wb, ws2, "Detalle Docentes");
+
+        XLSX.writeFile(wb, "Reporte_Trayectorias_DGE.xlsx");
+        printLog("¡Excel descargado con Dashboards Múltiples!", false, true);
+    });
+</script>
+
+</body>
+</html>
