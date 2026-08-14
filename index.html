@@ -1,0 +1,2393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro Analítico de Trayectorias EAD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <!-- SheetJS (Excel) con soporte para Estilos -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .dark ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 min-h-screen font-sans antialiased transition-colors duration-300">
+
+    <nav class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#1e293b]/80 backdrop-blur px-6 py-4 flex flex-col md:flex-row items-center justify-between sticky top-0 z-50 gap-4 md:gap-0 transition-colors duration-300">
+        <div class="flex items-center gap-3">
+            <span class="text-3xl">🎯</span>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Registro Analítico de Trayectorias</h1>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Resolución 906-DGE-2026 - Módulo de Control Multimatriz</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="status-materias" class="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-medium">Materias procesadas: 0</div>
+            <div id="status-alumnos" class="bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800/60 px-3 py-1.5 rounded-lg text-blue-700 dark:text-blue-300 font-bold text-xs">Alumnos detectados: 0</div>
+            
+            <!-- Botón Modo Claro/Oscuro -->
+            <button id="theme-toggle" class="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 focus:outline-none transition-colors border border-slate-200 dark:border-slate-700" title="Cambiar tema">
+                <span id="theme-toggle-light-icon" class="hidden text-lg leading-none">🌞</span>
+                <span id="theme-toggle-dark-icon" class="hidden text-lg leading-none">🌙</span>
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+
+        <!-- PASO 1 -->
+        <div class="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-colors duration-300">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+            <div class="mb-4">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">1</span>
+                    Subir Archivos de Calificaciones
+                </h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm ml-8">Puedes subir la cantidad de archivos de Excel que necesites (sin límite). El nombre del archivo se usará como nombre de la materia.</p>
+            </div>
+            
+            <div id="drop-zone" class="ml-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-start p-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 transition-all">
+                <div class="flex flex-col space-y-3">
+                    <button onclick="document.getElementById('excel-in').click()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                        <span class="text-xl">📂</span> Seleccionar o Arrastrar Archivos (.xlsx, .csv)
+                    </button>
+                    <input type="file" id="excel-in" multiple accept=".xlsx, .xls, .csv" class="hidden">
+                    <div class="flex justify-between items-center px-1">
+                        <span class="text-xs text-slate-500 dark:text-slate-400">Archivos listos en cola:</span>
+                        <span id="file-counter" class="text-xs bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 font-bold border border-slate-200 dark:border-slate-800">0 cargados</span>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-[#0f172a] rounded-xl p-4 border border-slate-200 dark:border-slate-800 h-32 overflow-y-auto shadow-inner">
+                    <div id="file-queue" class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                        <span class="italic block text-center py-2 text-slate-500">Arrastra archivos aquí o usa el botón de la izquierda.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SELECTOR DE PERFIL / MÓDULO (PRECEPTORÍA VS CUERPO DOCENTE) -->
+        <div class="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-lg transition-colors duration-300">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Seleccionar Perfil de Usuario:</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:w-auto">
+                    <button id="btn-tab-preceptor" onclick="switchModulo('preceptor')" class="px-5 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-3 transition shadow bg-blue-600 text-white">
+                        <span class="text-lg">🛡️</span>
+                        <div class="text-left">
+                            <div class="leading-none">Perfil Preceptoría</div>
+                            <div class="text-[10px] font-normal opacity-80 mt-0.5">Seguimiento, Semáforos & Padrón</div>
+                        </div>
+                    </button>
+                    <button id="btn-tab-docente" onclick="switchModulo('docente')" class="px-5 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-3 transition bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700">
+                        <span class="text-lg">🎓</span>
+                        <div class="text-left">
+                            <div class="leading-none">Perfil Cuerpo Docente</div>
+                            <div class="text-[10px] font-normal opacity-80 mt-0.5">Cátedras, AP01-AP08 & GEI</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL SECCIÓN PRECEPTORÍA -->
+        <div id="panel-preceptor" class="bg-white dark:bg-[#1e293b] border-l-4 border-l-blue-600 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all">
+            <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="text-xl">🛡️</span> Centro de Control de Preceptoría
+                    </h2>
+                    <p class="text-slate-500 dark:text-slate-400 text-xs mt-0.5">Control de ausentismo, semáforos de trayectorias pedagógicas y reporte institucional multihoja.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <label class="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/60 transition shadow-sm">
+                        <input type="checkbox" id="chk-incluir-gei-sin-moodle" onchange="calcularMatrizTrayectorias()" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500">
+                        <span>🌐 Auditoría GEI: Incluir alumnos no registrados en Plataforma Moodle</span>
+                    </label>
+                    <button id="btn-export-preceptor" disabled onclick="document.getElementById('btn-export').click()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs flex items-center gap-2">
+                        <span>📥 Descargar Excel Completo Multihoja</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <!-- Rango de Fechas -->
+                <div class="lg:col-span-2 space-y-3 bg-slate-50 dark:bg-[#0f172a] p-5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <h3 class="font-bold text-slate-700 dark:text-slate-300 text-sm mb-3 flex items-center gap-2">📅 Rango de Fechas (Opcional)</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] text-slate-500 mb-1.5 uppercase tracking-wider font-bold">Inicio:</label>
+                            <input type="date" id="date-start" class="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-500 mb-1.5 uppercase tracking-wider font-bold">Final:</label>
+                            <input type="date" id="date-end" class="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Semáforo -->
+                <div class="lg:col-span-3 space-y-3 bg-slate-50 dark:bg-[#0f172a] p-5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <h3 class="font-bold text-slate-700 dark:text-slate-300 text-sm mb-3 flex items-center gap-2">🚦 Estados a Mostrar (Semáforo Institucional)</h3>
+                    <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-center justify-center md:justify-start w-full py-2">
+                        <!-- Semáforo Literal -->
+                        <div class="flex items-start gap-4 md:gap-6 relative">
+                            <div class="bg-slate-800 dark:bg-black p-3 rounded-[40px] flex flex-col gap-3 border-[6px] border-slate-700 dark:border-slate-800 shadow-2xl relative z-10">
+                                <label class="cursor-pointer hover:scale-105 transition-transform">
+                                    <input type="checkbox" id="chk-green" checked class="peer sr-only">
+                                    <div class="w-12 h-12 rounded-full border-[3px] border-slate-900 dark:border-slate-950 bg-emerald-950 transition-all duration-300 peer-checked:bg-emerald-500 peer-checked:shadow-[0_0_30px_rgba(16,185,129,0.9),inset_0_0_15px_rgba(255,255,255,0.7)]"></div>
+                                </label>
+                                <label class="cursor-pointer hover:scale-105 transition-transform">
+                                    <input type="checkbox" id="chk-yellow" checked class="peer sr-only">
+                                    <div class="w-12 h-12 rounded-full border-[3px] border-slate-900 dark:border-slate-950 bg-amber-950 transition-all duration-300 peer-checked:bg-amber-400 peer-checked:shadow-[0_0_30px_rgba(251,191,36,0.9),inset_0_0_15px_rgba(255,255,255,0.7)]"></div>
+                                </label>
+                                <label class="cursor-pointer hover:scale-105 transition-transform">
+                                    <input type="checkbox" id="chk-red" checked class="peer sr-only">
+                                    <div class="w-12 h-12 rounded-full border-[3px] border-slate-900 dark:border-slate-950 bg-red-950 transition-all duration-300 peer-checked:bg-red-500 peer-checked:shadow-[0_0_30px_rgba(239,68,68,0.9),inset_0_0_15px_rgba(255,255,255,0.7)]"></div>
+                                </label>
+                            </div>
+                            
+                            <div class="hidden md:block absolute -bottom-10 left-[42px] w-6 h-16 bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-800 dark:to-slate-900 rounded-b shadow-lg -z-10"></div>
+
+                            <div class="flex flex-col gap-3 py-3 h-full">
+                                <div class="h-12 flex items-center">
+                                    <div>
+                                        <div class="text-emerald-700 dark:text-emerald-400 font-bold text-lg leading-none">Continua</div>
+                                        <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">(≥ 3 tareas)</div>
+                                    </div>
+                                </div>
+                                <div class="h-12 flex items-center">
+                                    <div>
+                                        <div class="text-amber-600 dark:text-amber-400 font-bold text-lg leading-none">Fluctuante</div>
+                                        <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">(1 - 2 tareas)</div>
+                                    </div>
+                                </div>
+                                <div class="h-12 flex items-center">
+                                    <div>
+                                        <div class="text-red-600 dark:text-red-400 font-bold text-lg leading-none">Interrumpida</div>
+                                        <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">(0 tareas)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="w-full md:w-px h-px md:h-48 bg-slate-200 dark:bg-slate-700 mx-0 md:mx-4"></div>
+
+                        <div class="flex items-center justify-center">
+                            <label class="cursor-pointer group flex flex-col items-center gap-3 hover:-translate-y-1 transition-transform">
+                                <input type="checkbox" id="chk-blue" checked class="peer sr-only">
+                                <div class="w-24 h-24 rounded-2xl bg-slate-200 dark:bg-blue-950 border-4 border-slate-300 dark:border-slate-800 transition-all duration-300 flex flex-col items-center justify-center peer-checked:bg-blue-600 peer-checked:border-blue-400 peer-checked:shadow-[0_0_25px_rgba(59,130,246,0.6)] relative overflow-hidden">
+                                    <div class="absolute inset-0 bg-white/20 opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                    <svg class="w-10 h-10 text-slate-400 dark:text-blue-800 peer-checked:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-blue-700 dark:text-blue-400 font-bold leading-tight text-sm">No Matriculado</div>
+                                    <div class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Fuera del Sis.</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6">
+                 <button id="btn-process" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm">
+                    Generar Matriz de Preceptoría & Trayectorias ⚡
+                </button>
+            </div>
+        </div>
+
+        <!-- PANEL SECCIÓN DOCENTE -->
+        <div id="panel-docente" class="hidden bg-white dark:bg-[#1e293b] border-l-4 border-l-purple-600 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all">
+            <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="text-xl">🎓</span> Centro de Cátedra Docente & Calificaciones
+                    </h2>
+                    <p class="text-slate-500 dark:text-slate-400 text-xs mt-0.5">Seguimiento por asignatura, 10 notas oficiales GEI y desglose por Aula Pedagógica (AP01 a AP08).</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <button id="btn-export-docente-ap" disabled onclick="abrirModalExportAP()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2.5 rounded-xl transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs flex items-center gap-1.5">
+                        <span>🧩 Exportar Planilla por AP (8 Pestañas)</span>
+                    </button>
+                    <button id="btn-export-docente-gei" disabled onclick="abrirModalExportGEI()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-xl transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs flex items-center gap-1.5">
+                        <span>📋 Exportar Libreta GEI (10 Notas)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SUB-VISTAS DE DOCENTE -->
+            <div class="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-[#0f172a] p-3 rounded-xl border border-slate-200 dark:border-slate-800 mb-6">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Modo Cátedra:</span>
+                <button id="btn-vista-docente" onclick="setModoRol('docente')" class="px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 bg-emerald-600 text-white shadow transition">
+                    <span>📚 Notas por Espacio</span>
+                </button>
+                <button id="btn-vista-ap" onclick="setModoRol('ap')" class="px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition">
+                    <span>🧩 Vista por AP</span>
+                </button>
+                <button id="btn-vista-gei" onclick="setModoRol('gei')" class="px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition">
+                    <span>📋 Libreta GEI</span>
+                </button>
+            </div>
+
+            <!-- CONTROLES DE FILTRO DOCENTE -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-[#0f172a] p-5 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div id="wrapper-select-materia" class="flex flex-col">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">1. Seleccionar Espacio Curricular / Materia:</label>
+                    <select id="select-materia-docente" onchange="actualizarFiltroMateriaDocente(this.value)" class="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-purple-500 transition">
+                        <option value="TODAS">Ver Todas las Materias</option>
+                    </select>
+                </div>
+                <div id="wrapper-select-ap" class="hidden flex-col">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">2. Seleccionar Aula Pedagógica (AP):</label>
+                    <div class="flex items-center gap-2">
+                        <select id="select-ap-filtro" onchange="actualizarFiltroAP(this.value)" class="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-purple-500 transition">
+                            <option value="TODAS">🌟 Todas las APs (AP01 a AP08)</option>
+                            <option value="AP01">AP01 (Sem 1-4)</option>
+                            <option value="AP02">AP02 (Sem 5-8)</option>
+                            <option value="AP03">AP03 (Sem 9-12)</option>
+                            <option value="AP04">AP04 (Sem 13-16)</option>
+                            <option value="AP05">AP05 (Sem 17-20)</option>
+                            <option value="AP06">AP06 (Sem 21-24)</option>
+                            <option value="AP07">AP07 (Sem 25-28)</option>
+                            <option value="AP08">AP08 (Sem 29-32)</option>
+                        </select>
+                        <button onclick="exportarSeleccionActualAP()" title="Exportar la materia y AP actualmente seleccionados" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow flex items-center gap-1.5 whitespace-nowrap">
+                            <span>📥 Exportar AP</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PASO 3: TABLA DE RESULTADOS Y VISTAS -->
+        <div id="grid-container" class="hidden bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden transition-colors duration-300">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">2</span>
+                        Resultados y Consulta de Trayectorias
+                    </h2>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Usa los filtros de columna para buscar alumnos o cambiar la perspectiva según tu rol.</p>
+                </div>
+                
+                <div class="flex flex-col md:flex-row items-end md:items-center gap-3 md:gap-4 w-full md:w-auto">
+                    <div id="color-stats" class="hidden gap-2 text-xs font-bold border border-slate-200 dark:border-slate-700 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 shadow-inner">
+                        <span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-2 py-1.5 rounded flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></span> <span id="stat-green">0</span></span>
+                        <span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-2 py-1.5 rounded flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_5px_#fbbf24]"></span> <span id="stat-yellow">0</span></span>
+                        <span class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-2 py-1.5 rounded flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_#ef4444]"></span> <span id="stat-red">0</span></span>
+                        <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-2 py-1.5 rounded flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_5px_#3b82f6]"></span> <span id="stat-blue">0</span></span>
+                    </div>
+                    <span id="rows-count" class="text-sm text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-800 font-bold whitespace-nowrap">Visibles: 0</span>
+                    <button id="btn-export" class="hidden"></button>
+                </div>
+            </div>
+
+            <div class="ml-8 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0f172a] shadow-inner max-h-[600px] overflow-y-auto">
+                <table class="w-full text-left border-collapse table-fixed min-w-[1200px] text-[11px]">
+                    <thead class="bg-slate-100 dark:bg-[#1e293b] text-slate-600 dark:text-slate-300 uppercase tracking-wider sticky top-0 z-20 shadow-md">
+                        <tr id="th-headers" class="border-b border-slate-300 dark:border-slate-700 bg-slate-100/95 dark:bg-[#1e293b]/95 backdrop-blur"></tr>
+                        <tr id="th-inputs" class="border-b border-slate-300 dark:border-slate-800 bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur"></tr>
+                    </thead>
+                    <tbody id="tbody-rows" class="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- NOTIFICACIONES -->
+        <div class="bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex gap-4 items-start shadow-inner transition-colors duration-300">
+            <span class="text-xl">🔔</span>
+            <div class="w-full">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Estado del Sistema</h3>
+                <div id="log" class="font-mono text-[11px] max-h-24 overflow-y-auto space-y-1 pr-2">
+                    <div class="text-slate-500 dark:text-slate-400">> Listo para recibir archivos.</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL DE SELECCIÓN PARA EXPORTAR LIBRETA GEI -->
+    <div id="modal-export-gei" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+        <div class="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl max-w-md w-full relative space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>📋</span> Exportar Libreta GEI
+                </h3>
+                <button onclick="cerrarModalExportGEI()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg font-bold p-1">✕</button>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Selecciona el Espacio Curricular / Materia:</label>
+                <select id="select-materia-export-gei" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-amber-500 transition">
+                    <option value="TODAS">🌟 Todas las Materias (Consolidado GEI)</option>
+                </select>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-2">Puedes descargar la planilla consolidada con todas las asignaturas o seleccionar una sola materia específica.</p>
+            </div>
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button onclick="cerrarModalExportGEI()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">Cancelar</button>
+                <button onclick="confirmarExportacionGEI()" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-lg transition flex items-center gap-1.5">Descargar Excel 📥</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // LOGICA DARK MODE
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const darkIcon = document.getElementById('theme-toggle-dark-icon');
+    const lightIcon = document.getElementById('theme-toggle-light-icon');
+
+    function updateIcons() {
+        if (document.documentElement.classList.contains('dark')) {
+            darkIcon.classList.add('hidden');
+            lightIcon.classList.remove('hidden');
+        } else {
+            lightIcon.classList.add('hidden');
+            darkIcon.classList.remove('hidden');
+        }
+    }
+
+    if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+    updateIcons();
+
+    themeToggleBtn.addEventListener('click', function() {
+        if (document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('color-theme', 'light');
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('color-theme', 'dark');
+        }
+        updateIcons();
+    });
+
+    const CONFIG_SISTEMA = {
+        columnasExcel: {
+            fechaHora: "Fecha y Hora",
+            nombre: "Nombre",
+            pkUsuario: "Nombre de usuario",
+            correo: "Dirección de correo",
+            itemCalificacion: "Ítem de calificación",
+            notaOriginal: "Calificación original",
+            notaRevisada: "Calificación revisada"
+        },
+        itemsExcluidos: ["total del curso"]
+    };
+
+    const MESES_DICCIONARIO = { "enero":0, "febrero":1, "marzo":2, "abril":3, "mayo":4, "junio":5, "julio":6, "agosto":7, "septiembre":8, "octubre":9, "noviembre":10, "diciembre":11 };
+
+    let listaArchivosCalificaciones = [];
+    let listaMateriasDetectadas = [];
+    let cacheArchivosProcesados = [];
+    let baseEstudiantesMaster = {};
+    let datasetMatrizPlanaFinal = [];
+    let datasetFiltradoActual = [];
+
+    let estadosFiltros = {};
+    let estadoOrden = { colId: null, asc: true };
+    let padronGlobal = {};
+
+    let modoRolActual = 'preceptor';
+    let materiaDocenteSeleccionada = 'TODAS';
+    let apFiltroSeleccionado = 'TODAS';
+    let moduloActivo = 'preceptor';
+
+    function switchModulo(modulo) {
+        moduloActivo = modulo;
+        const btnTabP = document.getElementById('btn-tab-preceptor');
+        const btnTabD = document.getElementById('btn-tab-docente');
+        const panelP = document.getElementById('panel-preceptor');
+        const panelD = document.getElementById('panel-docente');
+
+        const activeClassP = "px-5 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-3 transition shadow bg-blue-600 text-white";
+        const activeClassD = "px-5 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-3 transition shadow bg-purple-600 text-white";
+        const inactiveClass = "px-5 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-3 transition bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700";
+
+        if (modulo === 'preceptor') {
+            if(btnTabP) btnTabP.className = activeClassP;
+            if(btnTabD) btnTabD.className = inactiveClass;
+            if(panelP) panelP.classList.remove('hidden');
+            if(panelD) panelD.classList.add('hidden');
+            setModoRol('preceptor');
+        } else {
+            if(btnTabP) btnTabP.className = inactiveClass;
+            if(btnTabD) btnTabD.className = activeClassD;
+            if(panelP) panelP.classList.add('hidden');
+            if(panelD) panelD.classList.remove('hidden');
+            setModoRol('docente');
+        }
+    }
+
+    function actualizarFiltroAP(val) {
+        apFiltroSeleccionado = val;
+        construirHeadersGridDinamico();
+        aplicarFiltrosYOrdenCompleto();
+    }
+
+    function exportarSeleccionActualAP() {
+        if (datasetFiltradoActual.length === 0) {
+            alert("Por favor carga y genera primero el reporte de trayectorias.");
+            return;
+        }
+        let matVal = materiaDocenteSeleccionada || "TODAS";
+        let apVal = apFiltroSeleccionado || "TODAS";
+        exportarPlanillaAP(matVal, apVal);
+    }
+
+    function poblarSelectMateriasDocente() {
+        const sel = document.getElementById('select-materia-docente');
+        if (!sel) return;
+        let currVal = sel.value || materiaDocenteSeleccionada;
+        sel.innerHTML = '<option value="TODAS">Ver Todas las Materias</option>';
+        listaMateriasDetectadas.forEach(mat => {
+            sel.innerHTML += `<option value="${mat}">${mat}</option>`;
+        });
+        sel.value = listaMateriasDetectadas.includes(currVal) ? currVal : "TODAS";
+        materiaDocenteSeleccionada = sel.value;
+    }
+
+    function actualizarFiltroMateriaDocente(val) {
+        materiaDocenteSeleccionada = val;
+        construirHeadersGridDinamico();
+        aplicarFiltrosYOrdenCompleto();
+    }
+
+    const logBox = document.getElementById('log');
+    function printLog(text, isError = false, isSuccess = false) {
+        let colorClass = 'text-sky-600 dark:text-sky-400';
+        if (isError) colorClass = 'text-red-600 dark:text-red-400 font-bold';
+        if (isSuccess) colorClass = 'text-emerald-600 dark:text-emerald-400 font-bold';
+        
+        logBox.innerHTML += `<div class="${colorClass}">> ${text}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // PASO 1: AÑADIR ARCHIVOS & DRAG AND DROP
+    const inputExcel = document.getElementById('excel-in');
+    const dropZone = document.getElementById('drop-zone');
+
+    function agregarArchivosACola(files) {
+        if(!files || files.length === 0) return;
+        let countNuevos = 0;
+        for(let i = 0; i < files.length; i++) {
+            let f = files[i];
+            if(f.name.endsWith('.xlsx') || f.name.endsWith('.xls') || f.name.endsWith('.csv')) {
+                if(!listaArchivosCalificaciones.some(ex => ex.name === f.name)) {
+                    listaArchivosCalificaciones.push(f);
+                    countNuevos++;
+                }
+            }
+        }
+        document.getElementById('file-counter').innerText = `${listaArchivosCalificaciones.length} cargados`;
+        renderizarColaArchivos();
+        if (countNuevos > 0) {
+            printLog(`🟢 ${countNuevos} archivo(s) agregado(s). Total en cola: ${listaArchivosCalificaciones.length}.`, false, true);
+        }
+    }
+
+    if (inputExcel) {
+        inputExcel.addEventListener('change', (e) => {
+            agregarArchivosACola(e.target.files);
+            e.target.value = "";
+        });
+    }
+
+    if (dropZone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('border-blue-500', 'bg-blue-50/20', 'dark:bg-blue-950/30', 'scale-[1.01]');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('border-blue-500', 'bg-blue-50/20', 'dark:bg-blue-950/30', 'scale-[1.01]');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            agregarArchivosACola(files);
+        }, false);
+    }
+
+    function renderizarColaArchivos() {
+        const queueDiv = document.getElementById('file-queue');
+        if(listaArchivosCalificaciones.length === 0) {
+            queueDiv.innerHTML = '<span class="italic block text-center py-2 text-slate-500">Aún no has seleccionado ningún archivo.</span>';
+        } else {
+            queueDiv.innerHTML = listaArchivosCalificaciones.map((f, idx) => `
+                <div class="flex justify-between items-center text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800 py-1.5 px-2 bg-white dark:bg-slate-900/50 rounded mb-1">
+                    <span class="truncate flex items-center gap-2"><span class="text-emerald-500 dark:text-emerald-400">📄</span> ${idx+1}. ${f.name}</span>
+                    <button onclick="removerArchivo(${idx})" class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 bg-red-100 hover:bg-red-200 dark:bg-red-400/10 dark:hover:bg-red-400/20 px-2 py-0.5 rounded text-xs transition">Quitar</button>
+                </div>
+            `).join('');
+        }
+    }
+
+    function removerArchivo(idx) {
+        listaArchivosCalificaciones.splice(idx, 1);
+        document.getElementById('file-counter').innerText = `${listaArchivosCalificaciones.length} cargados`;
+        renderizarColaArchivos();
+    }
+
+    function parseFechaMoodle(strTexto) {
+        try {
+            if(!strTexto) return null;
+            let limpio = strTexto.toString().replace(/\s+/g, ' ').toLowerCase().trim();
+            let partes = limpio.split(',');
+            if(partes.length < 2) return null;
+            let fragmentos = partes[1].trim().split(' de ');
+            if(fragmentos.length !== 3) return null;
+
+            let dia = parseInt(fragmentos[0]);
+            let mesIdx = MESES_DICCIONARIO[fragmentos[1].trim()];
+            let anio = parseInt(fragmentos[2].split(' ')[0]);
+            if(mesIdx === undefined) return null;
+
+            let hora = 12, min = 0;
+            if(partes[2]) {
+                let hBits = partes[2].trim().split(':');
+                hora = parseInt(hBits[0]) || 12;
+                min = parseInt(hBits[1]) || 0;
+            }
+            return new Date(anio, mesIdx, dia, hora, min, 0);
+        } catch(e) { return null; }
+    }
+
+    function formatearNombreOficial(rawName) {
+        if (!rawName) return "—";
+        let str = rawName.toString().trim();
+        if (!str) return "—";
+
+        // Caso 1: Si ya viene con coma "APELLIDO(S), Nombre(s)"
+        if (str.includes(",")) {
+            let partes = str.split(",");
+            let apellidos = partes[0].trim().toUpperCase();
+            let nombres = partes.slice(1).join(",").trim()
+                .toLowerCase()
+                .replace(/(?:^|\s|-)\S/g, match => match.toUpperCase());
+            return `${apellidos}, ${nombres}`;
+        }
+
+        // Caso 2: Sin coma. Formato Moodle "Nombre(s) Apellido(s)" o mezclado
+        let palabras = str.split(/\s+/);
+        if (palabras.length === 1) return palabras[0].toUpperCase();
+
+        let esMayus = (w) => w.length > 1 && w === w.toUpperCase() && /[A-ZÁÉÍÓÚÑ]/.test(w);
+        let idx_m = palabras.findIndex(w => esMayus(w));
+
+        let apellidos = [];
+        let nombres = [];
+
+        if (idx_m !== -1) {
+            if (idx_m === 0) {
+                let last_m = 0;
+                for (let i = 0; i < palabras.length; i++) {
+                    if (esMayus(palabras[i])) last_m = i;
+                    else break;
+                }
+                apellidos = palabras.slice(0, last_m + 1);
+                nombres = palabras.slice(last_m + 1);
+            } else {
+                nombres = palabras.slice(0, idx_m);
+                apellidos = palabras.slice(idx_m);
+            }
+        } else {
+            if (palabras.length === 2) {
+                nombres = [palabras[0]];
+                apellidos = [palabras[1]];
+            } else if (palabras.length === 3) {
+                nombres = [palabras[0], palabras[1]];
+                apellidos = [palabras[2]];
+            } else {
+                let m = Math.floor(palabras.length / 2);
+                nombres = palabras.slice(0, m);
+                apellidos = palabras.slice(m);
+            }
+        }
+
+        let apellidosFormatted = apellidos.join(" ").toUpperCase();
+        let nombresFormatted = nombres.join(" ")
+            .toLowerCase()
+            .replace(/(?:^|\s|-)\S/g, match => match.toUpperCase());
+
+        return `${apellidosFormatted}, ${nombresFormatted}`;
+    }
+
+    function limpiarNota(v) {
+        if(v === undefined || v === null || v === '-') return null;
+        let n = parseFloat(v.toString().replace(',', '.').trim());
+        return isNaN(n) ? null : n;
+    }
+
+    // SIGLAS OFICIALES SEGÚN GUÍA DE NOMENCLATURA MOODLE DEPJA MENDOZA
+    const SIGLAS_OFICIALES_DEPJA = [
+        // Bachiller en Agro y Ambiente
+        'CN1°', 'LE1°', 'L1°', 'M1°', 'CS1°', 'FEC1°', 'TS1°',
+        'M2°', 'LE2°', 'CS2°', 'CN2°', 'LL2°', 'TM2°', 'TA2°', 'TSAAI2°',
+        'LE3°', 'M3°', 'FEC3°', 'LL3°', 'PP3°', 'TAI3°', 'EJ3°', 'PA3°', 'TSAAII3°',
+        // Bachiller en Economía y Administración
+        'EJ2°', 'SIC2°', 'TSEAI2°', 'SIC3°', 'TSEAII3°', 'ES3°', 'PGM3°', 'TGO3°'
+    ];
+
+    // REGEX & ALGORITMO EAD (RESOLUCIÓN 906-DGE-2026 - GUÍA DE NOMENCLATURA DEPJA MENDOZA)
+    function parsearItemEaD(nombreItem) {
+        if (!nombreItem) return null;
+        const itemClean = nombreItem.trim();
+        const itemLower = itemClean.toLowerCase();
+
+        // Excluir de forma explícita ítems informales o de diagnóstico extra
+        if (itemLower.includes("diagn") || itemLower.includes("extra") || itemLower.includes("primeros pasos")) {
+            return null;
+        }
+
+        // Extracción opcional de Sigla Oficial del ítem
+        let siglaDetectada = "";
+        for (const sigla of SIGLAS_OFICIALES_DEPJA) {
+            if (itemClean.includes(sigla)) {
+                siglaDetectada = sigla;
+                break;
+            }
+        }
+
+        // 1. Cuestionarios semanales y actividades numeradas (Cuestionario, Tarea, TP, Evaluacion, Actividad, etc.)
+        const matchQuiz = itemClean.match(/(?:Cuestionario|Quiz|Tarea|TP|Trabajo|Evaluaci[oó]n|Actividad|Unidad|M[oó]dulo|Examen|Cuest)\s*(?:[A-Za-z0-9°º\-_]+)?\s*[\:\.\-]?\s*(\d{1,2})\b/i);
+        if (matchQuiz) {
+            const Q = parseInt(matchQuiz[1], 10);
+            if (Q >= 1 && Q <= 32) {
+                const apIndex = Math.min(8, Math.floor((Q - 1) / 3) + 1);
+                const weekInAp = ((Q - 1) % 3) + 1;
+                const semGlobal = (apIndex - 1) * 4 + weekInAp;
+
+                return {
+                    valido: true,
+                    tipo: 'CUESTIONARIO',
+                    sigla: siglaDetectada,
+                    numeroCorrelativo: Q,
+                    aulaPedagogica: `AP ${String(apIndex).padStart(2, '0')}`,
+                    apNum: apIndex,
+                    semanaAP: weekInAp,
+                    semanaGlobal: semGlobal,
+                    codigoSemana: `SEM${String(semGlobal).padStart(2, '0')}`
+                };
+            }
+        }
+
+        // 2. Práctica de Integración Obligatoria (PIO - 01 al 08)
+        const matchPIOHeader = itemClean.match(/(?:PIO|Pr[aá]ctica\s+de\s+Integraci[oó]n)/i);
+        if (matchPIOHeader) {
+            let validPioNum = null;
+            const matchParenPio = itemClean.match(/\(PIO-.*?(\d{1,2})\s*\)/i);
+            if (matchParenPio) {
+                validPioNum = parseInt(matchParenPio[1], 10);
+            } else {
+                const matchOfficialPio = itemClean.match(/[-_]L(\d{1,2})\b/i);
+                if (matchOfficialPio) {
+                    validPioNum = parseInt(matchOfficialPio[1], 10);
+                } else {
+                    const matchApPio = itemClean.match(/AP\s*0?(\d{1,2})\b/i);
+                    if (matchApPio) {
+                        validPioNum = parseInt(matchApPio[1], 10);
+                    } else {
+                        const matchAnyNum = itemClean.match(/PIO[-_ A-Za-z0-9°º]*?(\d{1,2})\b/i);
+                        if (matchAnyNum) {
+                            validPioNum = parseInt(matchAnyNum[1], 10);
+                        }
+                    }
+                }
+            }
+
+            if (validPioNum !== null && validPioNum >= 1 && validPioNum <= 8) {
+                const semGlobal = validPioNum * 4;
+                return {
+                    valido: true,
+                    tipo: 'PIO',
+                    sigla: siglaDetectada,
+                    numeroCorrelativo: validPioNum,
+                    aulaPedagogica: `AP ${String(validPioNum).padStart(2, '0')}`,
+                    apNum: validPioNum,
+                    semanaAP: 4,
+                    semanaGlobal: semGlobal,
+                    codigoSemana: `SEM${String(semGlobal).padStart(2, '0')}`
+                };
+            }
+        }
+
+        // 3. Autoevaluación Final
+        if (itemLower.includes("autoevaluaci") || itemLower.includes("autoevaluacion") || itemLower.includes(" af ")) {
+            return {
+                valido: true,
+                tipo: 'AUTOEVALUACION',
+                sigla: siglaDetectada,
+                semanaGlobal: 32,
+                aulaPedagogica: `AP 08`,
+                apNum: 8,
+                semanaAP: 4,
+                codigoSemana: `SEM32`
+            };
+        }
+
+        // 4. Coloquio Integrador / TFI
+        if (itemLower.includes("coloquio") || itemLower.includes("tfi") || itemLower.includes("trabajo final integrador")) {
+            return {
+                valido: true,
+                tipo: 'COLOQUIO',
+                sigla: siglaDetectada,
+                semanaGlobal: 32,
+                aulaPedagogica: `AP 08`,
+                apNum: 8,
+                semanaAP: 4,
+                codigoSemana: `SEM32`
+            };
+        }
+
+        // Fallback flexible universal: Si contiene cualquier número de 1 a 32, asignarlo dinámicamente
+        const matchAnyNumber = itemClean.match(/(\d{1,2})/);
+        if (matchAnyNumber) {
+            let numFound = parseInt(matchAnyNumber[1], 10);
+            if (numFound >= 1 && numFound <= 32) {
+                let apIndex = Math.min(8, Math.floor((numFound - 1) / 3) + 1);
+                let weekInAp = ((numFound - 1) % 3) + 1;
+                return {
+                    valido: true,
+                    tipo: 'CUESTIONARIO',
+                    sigla: siglaDetectada,
+                    numeroCorrelativo: numFound,
+                    aulaPedagogica: `AP ${String(apIndex).padStart(2, '0')}`,
+                    apNum: apIndex,
+                    semanaAP: weekInAp,
+                    semanaGlobal: numFound,
+                    codigoSemana: `SEM${String(numFound).padStart(2, '0')}`
+                };
+            }
+        }
+
+        // Si es una actividad general sin números (ej. "Foro Obligatorio", "Entrega Final")
+        return {
+            valido: true,
+            tipo: 'CUESTIONARIO',
+            sigla: siglaDetectada,
+            numeroCorrelativo: 1,
+            aulaPedagogica: 'AP 01',
+            apNum: 1,
+            semanaAP: 1,
+            semanaGlobal: 1,
+            codigoSemana: 'SEM01'
+        };
+    }
+
+    // CÓMPUTO DE 10 NOTAS GEI (MEMORÁNDUM MEMOE-2026-36-E-GDEMZA-DEPJA#DGE)
+    function calcularNotasGEI(itemsMap) {
+        let apNotas = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [] };
+        let autoevaluacion = null;
+        let coloquio = null;
+
+        Object.keys(itemsMap).forEach(itemName => {
+            let itemData = itemsMap[itemName];
+            if (itemData.notaFinal === null || isNaN(itemData.notaFinal)) return;
+
+            let nameLower = itemName.toLowerCase();
+            if (nameLower.includes("autoevaluaci") || nameLower.includes("autoevaluacion")) {
+                autoevaluacion = itemData.notaFinal;
+            } else if (nameLower.includes("coloquio")) {
+                coloquio = itemData.notaFinal;
+            } else if (itemData.infoEaD && itemData.infoEaD.apNum >= 1 && itemData.infoEaD.apNum <= 8) {
+                apNotas[itemData.infoEaD.apNum].push(itemData.notaFinal);
+            }
+        });
+
+        let resultadoGEI = {};
+        for (let k = 1; k <= 8; k++) {
+            let arr = apNotas[k];
+            if (arr.length > 0) {
+                let suma = arr.reduce((acc, curr) => acc + curr, 0);
+                resultadoGEI[`AP${String(k).padStart(2, '0')}`] = parseFloat((suma / arr.length).toFixed(2));
+            } else {
+                resultadoGEI[`AP${String(k).padStart(2, '0')}`] = "—";
+            }
+        }
+        resultadoGEI["Autoevaluacion"] = autoevaluacion !== null ? parseFloat(autoevaluacion.toFixed(2)) : "—";
+        resultadoGEI["Coloquio"] = coloquio !== null ? parseFloat(coloquio.toFixed(2)) : "—";
+
+        return resultadoGEI;
+    }
+
+    function abrirModalExportAP() {
+        if (datasetFiltradoActual.length === 0) return;
+        const selectMat = document.getElementById('select-materia-export-ap');
+        if (selectMat) {
+            selectMat.innerHTML = '<option value="TODAS">🌟 Todas las Materias</option>';
+            listaMateriasDetectadas.forEach(mat => {
+                selectMat.innerHTML += `<option value="${mat}">📚 ${mat}</option>`;
+            });
+            if (materiaDocenteSeleccionada && materiaDocenteSeleccionada !== 'TODAS') {
+                selectMat.value = materiaDocenteSeleccionada;
+            }
+        }
+        const selectAP = document.getElementById('select-ap-export-ap');
+        if (selectAP && modoRolActual === 'ap' && apFiltroSeleccionado) {
+            selectAP.value = apFiltroSeleccionado;
+        }
+        document.getElementById('modal-export-ap').classList.remove('hidden');
+    }
+
+    function cerrarModalExportAP() {
+        document.getElementById('modal-export-ap').classList.add('hidden');
+    }
+
+    function confirmarExportacionAP() {
+        const matVal = document.getElementById('select-materia-export-ap').value;
+        const apVal = document.getElementById('select-ap-export-ap').value;
+        cerrarModalExportAP();
+        exportarPlanillaAP(matVal, apVal);
+    }
+
+    function exportarPlanillaAP(materiaFiltro = "TODAS", apFiltro = "TODAS") {
+        if(datasetFiltradoActual.length === 0) return;
+        
+        let materiasAExportar = (materiaFiltro && materiaFiltro !== "TODAS")
+            ? [materiaFiltro]
+            : listaMateriasDetectadas;
+
+        let listAPs = (apFiltro && apFiltro !== "TODAS")
+            ? [apFiltro]
+            : ["AP01", "AP02", "AP03", "AP04", "AP05", "AP06", "AP07", "AP08"];
+
+        printLog(`Generando Planilla por AP (${apFiltro === "TODAS" ? "8 pestañas AP01-AP08" : apFiltro} · ${materiaFiltro})...`, false, false);
+        
+        const wb = XLSX.utils.book_new();
+
+        listAPs.forEach(apCodigo => {
+            let apNum = parseInt(apCodigo.replace("AP", ""), 10);
+            let qStart = (apNum - 1) * 3 + 1;
+            let qEnd = qStart + 2;
+
+            let aoa = [];
+            aoa.push([`REPORTE DE TRAYECTORIAS EAD - AULA PEDAGÓGICA ${apCodigo}`]);
+            aoa.push([`Resolución 906-DGE-2026 · Desglose de Cuestionarios L${String(qStart).padStart(2,'0')} a L${String(qEnd).padStart(2,'0')} y PIO-L${String(apNum).padStart(2,'0')}`]);
+            aoa.push([]);
+            
+            aoa.push([
+                "DNI / USUARIO", 
+                "ALUMNO/A", 
+                "CURSO", 
+                "MATERIA", 
+                `Cuestionario L${String(qStart).padStart(2,'0')}`, 
+                `Cuestionario L${String(qStart+1).padStart(2,'0')}`, 
+                `Cuestionario L${String(qEnd).padStart(2,'0')}`, 
+                `PIO-L${String(apNum).padStart(2,'0')} (Práctica Int.)`, 
+                `PROMEDIO ${apCodigo}`, 
+                "ESTADO AP"
+            ]);
+
+            datasetFiltradoActual.forEach(f => {
+                let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+                let curso = estMaster ? estMaster.curso : "—";
+
+                materiasAExportar.forEach(mat => {
+                    if (!estMaster || !estMaster.materiasMap[mat] || !estMaster.materiasMap[mat].matriculado) return;
+                    
+                    let itemsMap = estMaster.materiasMap[mat].items;
+                    let nQ1 = "—", nQ2 = "—", nQ3 = "—", nPIO = "—";
+                    let notasArr = [];
+
+                    Object.keys(itemsMap).forEach(itemName => {
+                        let itemData = itemsMap[itemName];
+                        if (itemData.notaFinal === null || isNaN(itemData.notaFinal)) return;
+                        let info = itemData.infoEaD;
+                        if (!info || info.apNum !== apNum) return;
+
+                        if (info.tipo === 'CUESTIONARIO') {
+                            if (info.semanaAP === 1) { nQ1 = itemData.notaFinal; notasArr.push(nQ1); }
+                            else if (info.semanaAP === 2) { nQ2 = itemData.notaFinal; notasArr.push(nQ2); }
+                            else if (info.semanaAP === 3) { nQ3 = itemData.notaFinal; notasArr.push(nQ3); }
+                        } else if (info.tipo === 'PIO') {
+                            nPIO = itemData.notaFinal;
+                            notasArr.push(nPIO);
+                        }
+                    });
+
+                    let promAP = notasArr.length > 0 
+                        ? parseFloat((notasArr.reduce((a,b)=>a+b,0)/notasArr.length).toFixed(2)) 
+                        : "—";
+
+                    let estadoAP = "🔴 Sin entregas";
+                    if (notasArr.length === 4) estadoAP = "🟢 Completo (4/4)";
+                    else if (notasArr.length >= 1) estadoAP = `🟡 Parcial (${notasArr.length}/4)`;
+
+                    aoa.push([
+                        f.nombre_usuario,
+                        f.nombre,
+                        curso,
+                        mat,
+                        nQ1, nQ2, nQ3, nPIO,
+                        promAP,
+                        estadoAP
+                    ]);
+                });
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+            if(ws['A1']) ws['A1'].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14 }, fill: { fgColor: { rgb: "4C1D95" } }, alignment: { vertical: "center" } };
+            ws['!merges'] = [
+                { s: {r: 0, c: 0}, e: {r: 0, c: 9} },
+                { s: {r: 1, c: 0}, e: {r: 1, c: 9} }
+            ];
+            if(ws['A2']) ws['A2'].s = { font: { italic: true, color: { rgb: "4C1D95" }, sz: 11 } };
+            
+            for(let C = 0; C < 10; ++C) {
+                let addr = XLSX.utils.encode_cell({r: 3, c: C});
+                if(ws[addr]) {
+                    ws[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10 }, fill: { fgColor: { rgb: "6D28D9" } }, alignment: { horizontal: "center", vertical: "center" } };
+                }
+            }
+
+            for(let R = 4; R < aoa.length; ++R) {
+                for(let C = 0; C < 10; ++C) {
+                    let addr = XLSX.utils.encode_cell({r: R, c: C});
+                    if(!ws[addr]) continue;
+                    let stCell = { alignment: { vertical: "center", horizontal: C >= 4 ? "center" : "left" }, border: { bottom: { style: "thin", color: { rgb: "E5E7EB" } } } };
+                    
+                    if (C === 9) {
+                        let val = aoa[R][9] || "";
+                        if (val.includes("Completo")) { stCell.fill = { fgColor: { rgb: "D5F5E3" } }; stCell.font = { color: { rgb: "196F3D" }, bold: true }; }
+                        else if (val.includes("Parcial")) { stCell.fill = { fgColor: { rgb: "FCF3CF" } }; stCell.font = { color: { rgb: "D68910" }, bold: true }; }
+                        else if (val.includes("Sin entregas")) { stCell.fill = { fgColor: { rgb: "FADBD8" } }; stCell.font = { color: { rgb: "922B21" } }; }
+                    } else if (C === 8 && aoa[R][8] !== "—") {
+                        stCell.font = { bold: true };
+                    }
+
+                    ws[addr].s = stCell;
+                }
+            }
+
+            ws['!cols'] = [
+                {wch: 15}, {wch: 35}, {wch: 15}, {wch: 25},
+                {wch: 18}, {wch: 18}, {wch: 18}, {wch: 24},
+                {wch: 16}, {wch: 20}
+            ];
+            ws['!autofilter'] = { ref: `A4:J${aoa.length}` };
+
+            XLSX.utils.book_append_sheet(wb, ws, apCodigo);
+        });
+
+        let strMateria = materiaFiltro !== "TODAS" ? materiaFiltro.replace(/[^a-zA-Z0-9_\-]/g, '_') : "TODAS_LAS_MATERIAS";
+        let nombreArchivo = `Planilla_AP_EAD_${strMateria}_${apFiltro}.xlsx`;
+        XLSX.writeFile(wb, nombreArchivo);
+        printLog(`¡Planilla por AP (${apFiltro} · ${materiaFiltro}) exportada con éxito!`, false, true);
+    }
+
+    function abrirModalExportGEI() {
+        if (datasetFiltradoActual.length === 0) return;
+        const select = document.getElementById('select-materia-export-gei');
+        if (select) {
+            select.innerHTML = '<option value="TODAS">🌟 Todas las Materias (Consolidado GEI)</option>';
+            listaMateriasDetectadas.forEach(mat => {
+                select.innerHTML += `<option value="${mat}">📚 ${mat}</option>`;
+            });
+            if (modoRolActual === 'docente' && materiaDocenteSeleccionada && materiaDocenteSeleccionada !== 'TODAS') {
+                select.value = materiaDocenteSeleccionada;
+            }
+        }
+        document.getElementById('modal-export-gei').classList.remove('hidden');
+    }
+
+    function cerrarModalExportGEI() {
+        document.getElementById('modal-export-gei').classList.add('hidden');
+    }
+
+    function confirmarExportacionGEI() {
+        const selVal = document.getElementById('select-materia-export-gei').value;
+        cerrarModalExportGEI();
+        exportarLibretaGEI(selVal);
+    }
+
+    function exportarLibretaGEI(materiaFiltro = "TODAS") {
+        if(datasetFiltradoActual.length === 0) return;
+        
+        let materiasAExportar = (materiaFiltro && materiaFiltro !== "TODAS")
+            ? [materiaFiltro]
+            : listaMateriasDetectadas;
+
+        let subtitulo = (materiaFiltro && materiaFiltro !== "TODAS")
+            ? `Espacio Curricular: ${materiaFiltro} · Estructura de 10 Notas`
+            : `Memorándum MEMOE-2026-36-E-GDEMZA-DEPJA#DGE · Estructura de 10 Notas para vuelco masivo`;
+
+        printLog(`Generando Libreta GEI (${materiaFiltro !== "TODAS" ? materiaFiltro : "Todas las materias"})...`, false, false);
+        
+        const wb = XLSX.utils.book_new();
+        let aoaGEI = [];
+        aoaGEI.push([`LIBRETA DE CALIFICACIONES GEI - DEPJA DGE MENDOZA`]);
+        aoaGEI.push([subtitulo]);
+        aoaGEI.push([]);
+        aoaGEI.push(["DNI / USUARIO", "ALUMNO/A", "CURSO", "MATERIA", "AP01", "AP02", "AP03", "AP04", "AP05", "AP06", "AP07", "AP08", "AUTOEVALUACIÓN", "COLOQUIO INTEGRADOR", "PROMEDIO GEI"]);
+
+        datasetFiltradoActual.forEach(f => {
+            let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+            let curso = estMaster ? estMaster.curso : "—";
+
+            materiasAExportar.forEach(mat => {
+                if (!estMaster || !estMaster.materiasMap[mat] || !estMaster.materiasMap[mat].matriculado) return;
+                let itemsMap = estMaster.materiasMap[mat].items;
+                let gei = calcularNotasGEI(itemsMap);
+
+                let sumaGEI = 0, countGEI = 0;
+                ["AP01", "AP02", "AP03", "AP04", "AP05", "AP06", "AP07", "AP08", "Autoevaluacion", "Coloquio"].forEach(k => {
+                    if (gei[k] !== "—" && typeof gei[k] === "number") {
+                        sumaGEI += gei[k];
+                        countGEI++;
+                    }
+                });
+                let promGEI = countGEI > 0 ? (sumaGEI / countGEI).toFixed(2) : "—";
+
+                aoaGEI.push([
+                    f.nombre_usuario,
+                    f.nombre,
+                    curso,
+                    mat,
+                    gei["AP01"], gei["AP02"], gei["AP03"], gei["AP04"],
+                    gei["AP05"], gei["AP06"], gei["AP07"], gei["AP08"],
+                    gei["Autoevaluacion"],
+                    gei["Coloquio"],
+                    promGEI
+                ]);
+            });
+        });
+
+        const wsGEI = XLSX.utils.aoa_to_sheet(aoaGEI);
+        if(wsGEI['A1']) wsGEI['A1'].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14 }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { vertical: "center" } };
+        wsGEI['!merges'] = [
+            { s: {r: 0, c: 0}, e: {r: 0, c: 14} },
+            { s: {r: 1, c: 0}, e: {r: 1, c: 14} }
+        ];
+        if(wsGEI['A2']) wsGEI['A2'].s = { font: { italic: true, color: { rgb: "1A3A5C" }, sz: 11 } };
+        
+        for(let C = 0; C < 15; ++C) {
+            let addr = XLSX.utils.encode_cell({r: 3, c: C});
+            if(wsGEI[addr]) {
+                wsGEI[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10 }, fill: { fgColor: { rgb: "0284C7" } }, alignment: { horizontal: "center", vertical: "center" } };
+            }
+        }
+
+        for(let R = 4; R < aoaGEI.length; ++R) {
+            for(let C = 0; C < 15; ++C) {
+                let addr = XLSX.utils.encode_cell({r: R, c: C});
+                if(!wsGEI[addr]) continue;
+                wsGEI[addr].s = { alignment: { vertical: "center", horizontal: C >= 4 ? "center" : "left" }, border: { bottom: { style: "thin", color: { rgb: "E5E7EB" } } } };
+            }
+        }
+
+        wsGEI['!cols'] = [
+            {wch: 15}, {wch: 35}, {wch: 15}, {wch: 25},
+            {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
+            {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
+            {wch: 18}, {wch: 22}, {wch: 16}
+        ];
+        wsGEI['!autofilter'] = { ref: `A4:O${aoaGEI.length}` };
+
+        let nombreArchivo = (materiaFiltro && materiaFiltro !== "TODAS")
+            ? `Libreta_GEI_${materiaFiltro.replace(/[^a-zA-Z0-9_\-]/g, '_')}.xlsx`
+            : "Libreta_Calificaciones_GEI_DEPJA.xlsx";
+
+        XLSX.utils.book_append_sheet(wb, wsGEI, "Libreta Calificaciones GEI");
+        XLSX.writeFile(wb, nombreArchivo);
+        printLog(`¡Libreta GEI (${materiaFiltro !== "TODAS" ? materiaFiltro : "Todas las materias"}) exportada con éxito!`, false, true);
+    }
+
+    // PASO 2: PROCESAR ARCHIVOS Y GENERAR TABLA
+    document.getElementById('btn-process').addEventListener('click', async () => {
+        if(listaArchivosCalificaciones.length === 0) { alert("Por favor sube al menos un archivo Excel en el Paso 1."); return; }
+
+        printLog("Iniciando análisis de trayectorias...");
+        cacheArchivosProcesados = [];
+        listaMateriasDetectadas = [];
+
+        for(let file of listaArchivosCalificaciones) {
+            let materia = file.name.replace(/\.[^/.]+$/, "");
+            listaMateriasDetectadas.push(materia);
+
+            await new Promise(r => setTimeout(r, 10));
+
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array', raw: false });
+            const filasRaw = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+
+            cacheArchivosProcesados.push({ materia, filas: filasRaw });
+        }
+
+        calcularMatrizTrayectorias();
+        
+        setTimeout(() => {
+            document.getElementById('grid-container').scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+    });
+
+    function calcularMatrizTrayectorias() {
+        const tsMin = document.getElementById('date-start').value ? new Date(document.getElementById('date-start').value + "T00:00:00").getTime() : null;
+        const tsMax = document.getElementById('date-end').value ? new Date(document.getElementById('date-end').value + "T23:59:59").getTime() : null;
+
+        baseEstudiantesMaster = {};
+        padronGlobal = {};
+        let archivosMoodle = [];
+
+        // 1. Filtrar y procesar Padrón Maestro GEI (Reporte de alumnos)
+        cacheArchivosProcesados.forEach(libro => {
+            const filasRaw = libro.filas;
+            if(filasRaw.length === 0) return;
+
+            // Detectar Padrón GEI
+            let isPadron = false;
+            let headerIdx = -1;
+            let nameLower = libro.materia.toLowerCase();
+            if (nameLower.includes("reporte de alumnos") || nameLower.includes("padron") || nameLower.includes("padrón")) {
+                isPadron = true;
+            }
+
+            for(let r=0; r<Math.min(filasRaw.length, 5); r++) {
+                let rowStr = (filasRaw[r] || []).join(" ").toLowerCase();
+                if(rowStr.includes("documento") && rowStr.includes("alumno") && (rowStr.includes("cuil") || rowStr.includes("curso") || rowStr.includes("nacimiento") || rowStr.includes("género") || rowStr.includes("genero"))) {
+                    isPadron = true;
+                    headerIdx = r;
+                    break;
+                }
+            }
+
+            if(isPadron) {
+                printLog(`✅ Padrón Maestro GEI detectado: ${libro.materia}`);
+                if (headerIdx === -1) headerIdx = 0;
+                let headers = filasRaw[headerIdx];
+                for(let r = headerIdx + 1; r < filasRaw.length; r++) {
+                    let row = filasRaw[r];
+                    if(!row || row.length === 0) continue;
+                    
+                    let obj = {};
+                    headers.forEach((h, i) => { if(h) obj[h.toString().trim()] = row[i]; });
+                    
+                    let rawDoc = (obj["Documento"] || obj["DOCUMENTO"] || obj["DNI"] || "").toString();
+                    let dniRaw = rawDoc.replace(/\D/g, ''); 
+                    let nombreRaw = (obj["Alumno"] || obj["ALUMNO"] || obj["Nombre"] || "").toString();
+                    
+                    if (dniRaw || nombreRaw) {
+                        let telKey = Object.keys(obj).find(k => k.toLowerCase().includes('tel') || k.toLowerCase().includes('celular'));
+                        let emailKey = Object.keys(obj).find(k => k.toLowerCase().includes('email') || k.toLowerCase().includes('mail'));
+                        
+                        padronGlobal[dniRaw] = {
+                            cuil: obj["Cuil"] || obj["CUIL"] || "",
+                            curso: obj["Curso"] || obj["CURSO"] || "",
+                            telefono: telKey ? obj[telKey] : "",
+                            nombre: formatearNombreOficial(nombreRaw),
+                            fnac: obj["F. Nacimiento"] || obj["Fecha de Nacimiento"] || "",
+                            genero: obj["Género"] || obj["Genero"] || "",
+                            direccion: obj["Direccion"] || obj["Dirección"] || "",
+                            localidad: obj["Localidad - Departamento"] || obj["Localidad"] || "",
+                            tutor: obj["Madre/Padre/Tutor"] || obj["Madre / Padre / Tutor"] || obj["Tutor"] || "",
+                            email: emailKey ? obj[emailKey] : ""
+                        };
+                    }
+                }
+                // Remover de listaMateriasDetectadas para no crear una columna falsa
+                listaMateriasDetectadas = listaMateriasDetectadas.filter(m => m !== libro.materia);
+            } else {
+                archivosMoodle.push(libro);
+            }
+        });
+
+        // 2. Procesar materias Moodle
+        archivosMoodle.forEach(libro => {
+            const filasRaw = libro.filas;
+            const cabecera = filasRaw[0].map(h => h ? h.toString().trim() : "");
+            let idxFecha = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.fechaHora);
+            let idxNombre = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.nombre);
+            let idxPk = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.pkUsuario);
+            let idxCorreo = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.correo);
+            let idxItem = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.itemCalificacion);
+            let idxNotaOrig = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.notaOriginal);
+            let idxNotaRev = cabecera.indexOf(CONFIG_SISTEMA.columnasExcel.notaRevisada);
+
+            if(idxPk === -1) idxPk = cabecera.findIndex(h => h.toLowerCase().includes("usuario"));
+            if(idxItem === -1) idxItem = cabecera.findIndex(h => h.toLowerCase().includes("ítem") || h.toLowerCase().includes("item"));
+
+            for(let i = 1; i < filasRaw.length; i++) {
+                const f = filasRaw[i];
+                if(!f || !f[idxPk]) continue;
+
+                let pk = f[idxPk].toString().trim();
+                let nombre = idxNombre !== -1 && f[idxNombre] ? formatearNombreOficial(f[idxNombre].toString().trim()) : pk;
+                let correo = idxCorreo !== -1 && f[idxCorreo] ? f[idxCorreo].toString().trim() : "---";
+
+                if(!baseEstudiantesMaster[pk]) {
+                    baseEstudiantesMaster[pk] = { nombre, nombre_usuario: pk, correo, materiasMap: {} };
+                }
+
+                if(!baseEstudiantesMaster[pk].materiasMap[libro.materia]) {
+                    baseEstudiantesMaster[pk].materiasMap[libro.materia] = { matriculado: true, items: {}, maxSemana: 0 };
+                }
+
+                if(!f[idxItem]) continue;
+                let item = f[idxItem].toString().trim();
+                if(CONFIG_SISTEMA.itemsExcluidos.includes(item.toLowerCase())) continue;
+
+                let infoEaD = parsearItemEaD(item);
+                let itemLower = item.toLowerCase();
+                let isAutoevaluacion = itemLower.includes("autoevaluaci") || itemLower.includes("autoevaluacion");
+                let isColoquio = itemLower.includes("coloquio");
+                let isOficialEaD = (infoEaD && infoEaD.valido === true) || isAutoevaluacion || isColoquio;
+
+                // REGLA NORMATIVA STRICTA: Descartar cualquier actividad extra que no cumpla la nomenclatura oficial DEPJA
+                if (!isOficialEaD) continue;
+
+                let semanaNum = infoEaD ? infoEaD.semanaGlobal : 0;
+
+                let timestamp = 0, dentroRango = true;
+                if(idxFecha !== -1 && f[idxFecha]) {
+                    let dObj = parseFechaMoodle(f[idxFecha]);
+                    if(dObj) {
+                        timestamp = dObj.getTime();
+                        if(tsMin && timestamp < tsMin) dentroRango = false;
+                        if(tsMax && timestamp > tsMax) dentroRango = false;
+                    }
+                }
+
+                let nOrig = idxNotaOrig !== -1 ? limpiarNota(f[idxNotaOrig]) : null;
+                let nRev = idxNotaRev !== -1 ? limpiarNota(f[idxNotaRev]) : null;
+                let notaDefinitiva = nRev !== null ? nRev : nOrig;
+
+                if(dentroRango && notaDefinitiva !== null) {
+                    let exist = baseEstudiantesMaster[pk].materiasMap[libro.materia].items[item];
+                    if(!exist || notaDefinitiva > exist.notaFinal || (notaDefinitiva === exist.notaFinal && timestamp > exist.ts)) {
+                        baseEstudiantesMaster[pk].materiasMap[libro.materia].items[item] = { notaFinal: notaDefinitiva, ts: timestamp, semana: semanaNum, infoEaD: infoEaD };
+                    }
+                    if(semanaNum > baseEstudiantesMaster[pk].materiasMap[libro.materia].maxSemana) {
+                        baseEstudiantesMaster[pk].materiasMap[libro.materia].maxSemana = semanaNum;
+                    }
+                }
+            }
+        });
+
+        // Auditoría opcional: Incorporar al maestro los estudiantes de GEI que aún no registran entregas en Moodle
+        const inclGeiSinMoodle = document.getElementById('chk-incluir-gei-sin-moodle') ? document.getElementById('chk-incluir-gei-sin-moodle').checked : false;
+        if (inclGeiSinMoodle) {
+            Object.keys(padronGlobal).forEach(dniKey => {
+                let pItem = padronGlobal[dniKey];
+                let foundKeyInMaster = Object.keys(baseEstudiantesMaster).find(pk => pk.replace(/\D/g, '') === dniKey);
+                if (!foundKeyInMaster && pItem.nombre) {
+                    baseEstudiantesMaster[dniKey] = {
+                        nombre: pItem.nombre,
+                        nombre_usuario: dniKey,
+                        correo: pItem.email || "---",
+                        materiasMap: {}
+                    };
+                }
+            });
+        }
+
+        // Enriquecer datos de los estudiantes del curso con el Padrón GEI (sin inflar la matrícula general)
+        Object.keys(baseEstudiantesMaster).forEach(pk => {
+            let est = baseEstudiantesMaster[pk];
+            let dniNum = pk.replace(/\D/g, '');
+            let match = padronGlobal[dniNum];
+            
+            if(!match) {
+                let nameMoodle = est.nombre.toLowerCase().replace(/[^a-z]/g, '');
+                let foundKey = Object.keys(padronGlobal).find(k => {
+                    if(!padronGlobal[k].nombre) return false;
+                    let namePadron = padronGlobal[k].nombre.toLowerCase().replace(/[^a-z]/g, '');
+                    return namePadron !== "" && (namePadron === nameMoodle || namePadron.includes(nameMoodle) || nameMoodle.includes(namePadron));
+                });
+                if(foundKey) match = padronGlobal[foundKey];
+            }
+
+            if(match) {
+                est.cuil = match.cuil || "—";
+                est.curso = match.curso || "—";
+                est.telefono = match.telefono || "—";
+                est.fnac = match.fnac || "—";
+                est.genero = match.genero || "—";
+                est.direccion = match.direccion || "—";
+                est.localidad = match.localidad || "—";
+                est.tutor = match.tutor || "—";
+                if (match.nombre && (!est.nombre || est.nombre === est.nombre_usuario)) {
+                    est.nombre = match.nombre;
+                }
+            } else {
+                est.cuil = "—"; est.curso = "—"; est.telefono = "—";
+                est.fnac = "—"; est.genero = "—"; est.direccion = "—";
+                est.localidad = "—"; est.tutor = "—";
+            }
+        });
+
+        datasetMatrizPlanaFinal = Object.values(baseEstudiantesMaster).map(est => {
+            let fila = {
+                nombre: formatearNombreOficial(est.nombre),
+                nombre_usuario: est.nombre_usuario,
+                correo: est.correo,
+                cuil: est.cuil || "—",
+                curso: est.curso || "—",
+                telefono: est.telefono || "—",
+                localidad: est.localidad || "—",
+                tutor: est.tutor || "—",
+                __estadosMateria: {},
+                __cantidadesMateria: {},
+                __maxSemanaMateria: {}
+            };
+
+            listaMateriasDetectadas.forEach(mat => {
+                let metadataMateria = est.materiasMap[mat];
+
+                if (!metadataMateria) {
+                    fila.__estadosMateria[mat] = "🔵 No Matriculado";
+                    fila.__cantidadesMateria[mat] = 0;
+                    fila.__maxSemanaMateria[mat] = 0;
+                    fila[mat] = `🔵 No Matriculado\n(Sin registros)`;
+                } else {
+                    let cant = Object.keys(metadataMateria.items).length;
+                    let maxSemana = metadataMateria.maxSemana;
+                    let semaforo = "🔴 Interrumpida";
+                    if(cant >= 3) semaforo = "🟢 Continua";
+                    else if(cant >= 1) semaforo = "🟡 Fluctuante";
+
+                    fila.__estadosMateria[mat] = semaforo;
+                    fila.__cantidadesMateria[mat] = cant;
+                    fila.__maxSemanaMateria[mat] = maxSemana;
+                    
+                    let textoSemana = maxSemana > 0 ? `Llegó a Semana ${maxSemana}` : `Sin entregas`;
+                    fila[mat] = `${semaforo}\n(${textoSemana})`;
+                }
+            });
+            return fila;
+        });
+
+        document.getElementById('status-materias').innerText = `Materias procesadas: ${listaMateriasDetectadas.length}`;
+        document.getElementById('status-alumnos').innerText = `Alumnos detectados: ${datasetMatrizPlanaFinal.length}`;
+printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPlanaFinal.length} estudiantes.`, false, true);
+
+        document.getElementById('grid-container').classList.remove('hidden');
+        document.getElementById('btn-export').removeAttribute('disabled');
+        const btnExpP = document.getElementById('btn-export-preceptor');
+        if(btnExpP) btnExpP.removeAttribute('disabled');
+        const btnExpDAP = document.getElementById('btn-export-docente-ap');
+        if(btnExpDAP) btnExpDAP.removeAttribute('disabled');
+        const btnExpDGEI = document.getElementById('btn-export-docente-gei');
+        if(btnExpDGEI) btnExpDGEI.removeAttribute('disabled');
+
+        poblarSelectMateriasDocente();
+        construirHeadersGridDinamico();
+        aplicarFiltrosYOrdenCompleto();
+    }
+
+    let semaforosMateriasFiltro = {};
+
+    function aplicarFiltrosYOrdenCompleto() {
+        if (!datasetMatrizPlanaFinal || datasetMatrizPlanaFinal.length === 0) {
+            datasetFiltradoActual = [];
+            renderizarFilasGridPantalla();
+            return;
+        }
+
+        let res = [...datasetMatrizPlanaFinal];
+
+        // 1. Filtrado por semáforos de materias específicas
+        Object.keys(semaforosMateriasFiltro).forEach(matKey => {
+            let estadosPermitidos = semaforosMateriasFiltro[matKey];
+            if (estadosPermitidos && estadosPermitidos.length > 0) {
+                res = res.filter(row => {
+                    let stRaw = row.__estadosMateria[matKey] || "🔴 Interrumpida";
+                    return estadosPermitidos.some(e => stRaw.includes(e));
+                });
+            }
+        });
+
+        // 2. Filtrado por columnas de texto (inputs por columna)
+        Object.keys(estadosFiltros).forEach(colId => {
+            let val = (estadosFiltros[colId] || "").toLowerCase().trim();
+            if (val && val !== "") {
+                res = res.filter(row => {
+                    let cellVal = (row[colId] || "").toString().toLowerCase();
+                    return cellVal.includes(val);
+                });
+            }
+        });
+
+        // 3. Ordenamiento
+        if (estadoOrden.colId) {
+            const cid = estadoOrden.colId;
+            const asc = estadoOrden.asc;
+            res.sort((a, b) => {
+                let vA = a[cid] !== undefined && a[cid] !== null ? a[cid].toString() : "";
+                let vB = b[cid] !== undefined && b[cid] !== null ? b[cid].toString() : "";
+                let numA = parseFloat(vA);
+                let numB = parseFloat(vB);
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return asc ? numA - numB : numB - numA;
+                }
+                return asc ? vA.localeCompare(vB) : vB.localeCompare(vA);
+            });
+        }
+
+        datasetFiltradoActual = res;
+        renderizarFilasGridPantalla();
+    }
+
+    function toggleFiltroSemaforoMateria(matKey, estado) {
+        if (!semaforosMateriasFiltro[matKey]) {
+            semaforosMateriasFiltro[matKey] = [];
+        }
+        let idx = semaforosMateriasFiltro[matKey].indexOf(estado);
+        if (idx > -1) {
+            semaforosMateriasFiltro[matKey].splice(idx, 1);
+        } else {
+            semaforosMateriasFiltro[matKey].push(estado);
+        }
+        actualizarEstilosBotonesSemaforoMateria();
+        aplicarFiltrosYOrdenCompleto();
+    }
+
+    function limpiarFiltroMateria(matKey) {
+        semaforosMateriasFiltro[matKey] = [];
+        actualizarEstilosBotonesSemaforoMateria();
+        aplicarFiltrosYOrdenCompleto();
+    }
+
+    function actualizarEstilosBotonesSemaforoMateria() {
+        if (!listaMateriasDetectadas) return;
+        listaMateriasDetectadas.forEach(matKey => {
+            let matIdClean = matKey.replace(/[^a-zA-Z0-9_-]/g, '_');
+            let activos = semaforosMateriasFiltro[matKey] || [];
+            
+            ['continua', 'fluctuante', 'interrumpida', 'nomatriculado'].forEach(estKey => {
+                let btn = document.getElementById(`btn-sem-${matIdClean}-${estKey}`);
+                if (!btn) return;
+                let estNombre = estKey === 'continua' ? 'Continua' :
+                                estKey === 'fluctuante' ? 'Fluctuante' :
+                                estKey === 'interrumpida' ? 'Interrumpida' : 'No Matriculado';
+                
+                if (activos.includes(estNombre)) {
+                    btn.classList.add('ring-2', 'ring-offset-1', 'ring-blue-500', 'font-black', 'scale-110');
+                } else {
+                    btn.classList.remove('ring-2', 'ring-offset-1', 'ring-blue-500', 'font-black', 'scale-110');
+                }
+            });
+        });
+    }
+
+    function setModoRol(rol) {
+        modoRolActual = rol;
+        const btnP = document.getElementById('btn-vista-preceptor');
+        const btnD = document.getElementById('btn-vista-docente');
+        const btnG = document.getElementById('btn-vista-gei');
+        const btnAP = document.getElementById('btn-vista-ap');
+        const wrapSel = document.getElementById('wrapper-select-materia');
+        const wrapAP = document.getElementById('wrapper-select-ap');
+
+        const styleActiveP = "px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 shadow bg-blue-600 text-white transition";
+        const styleActiveD = "px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 shadow bg-emerald-600 text-white transition";
+        const styleActiveG = "px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 shadow bg-amber-600 text-white transition";
+        const styleActiveAP = "px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 shadow bg-purple-600 text-white transition";
+        const styleInactive = "px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition";
+
+        if(btnP) btnP.className = rol === 'preceptor' ? styleActiveP : styleInactive;
+        if(btnD) btnD.className = rol === 'docente' ? styleActiveD : styleInactive;
+        if(btnG) btnG.className = rol === 'gei' ? styleActiveG : styleInactive;
+        if(btnAP) btnAP.className = rol === 'ap' ? styleActiveAP : styleInactive;
+
+        if (rol === 'ap') {
+            if(wrapSel) { wrapSel.classList.remove('hidden'); wrapSel.classList.add('flex'); }
+            if(wrapAP) { wrapAP.classList.remove('hidden'); wrapAP.classList.add('flex'); }
+            poblarSelectMateriasDocente();
+        } else if (rol === 'docente' || rol === 'gei') {
+            if(wrapSel) { wrapSel.classList.remove('hidden'); wrapSel.classList.add('flex'); }
+            if(wrapAP) { wrapAP.classList.add('hidden'); wrapAP.classList.remove('flex'); }
+            poblarSelectMateriasDocente();
+        } else {
+            if(wrapSel) { wrapSel.classList.add('hidden'); wrapSel.classList.remove('flex'); }
+            if(wrapAP) { wrapAP.classList.add('hidden'); wrapAP.classList.remove('flex'); }
+        }
+
+        if (datasetMatrizPlanaFinal.length > 0) {
+            const gridContainer = document.getElementById('grid-container');
+            if (gridContainer) gridContainer.classList.remove('hidden');
+        }
+
+        construirHeadersGridDinamico();
+        aplicarFiltrosYOrdenCompleto();
+    }
+
+    function construirHeadersGridDinamico() {
+        const rowHeaders = document.getElementById('th-headers');
+        const rowInputs = document.getElementById('th-inputs');
+        if (!rowHeaders || !rowInputs) return;
+        rowHeaders.innerHTML = ""; rowInputs.innerHTML = "";
+
+        let cols = [];
+        if (modoRolActual === 'preceptor') {
+            cols = [
+                { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
+                { id: "nombre", label: "Alumno (GEI)", width: "w-[180px] min-w-[180px]" },
+                { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
+                { id: "cuil", label: "CUIL", width: "w-[120px] min-w-[120px]" },
+                { id: "curso", label: "Curso", width: "w-[100px] min-w-[100px]" },
+                { id: "telefono", label: "Teléfono", width: "w-[110px] min-w-[110px]" },
+                { id: "localidad", label: "Localidad / Tutor", width: "w-[140px] min-w-[140px]" },
+                { id: "correo", label: "Correo", width: "w-[140px] min-w-[140px]" }
+            ];
+            listaMateriasDetectadas.forEach(mat => {
+                cols.push({ id: mat, label: mat, width: "w-[200px] min-w-[200px]" });
+            });
+        } else if (modoRolActual === 'gei') {
+            cols = [
+                { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
+                { id: "nombre", label: "Alumno", width: "w-[180px] min-w-[180px]" },
+                { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
+                { id: "curso", label: "Curso", width: "w-[90px] min-w-[90px]" },
+                { id: "__materia_gei", label: "Materia", width: "w-[160px] min-w-[160px]" },
+                { id: "AP01", label: "AP01", width: "w-[75px] min-w-[75px]" },
+                { id: "AP02", label: "AP02", width: "w-[75px] min-w-[75px]" },
+                { id: "AP03", label: "AP03", width: "w-[75px] min-w-[75px]" },
+                { id: "AP04", label: "AP04", width: "w-[75px] min-w-[75px]" },
+                { id: "AP05", label: "AP05", width: "w-[75px] min-w-[75px]" },
+                { id: "AP06", label: "AP06", width: "w-[75px] min-w-[75px]" },
+                { id: "AP07", label: "AP07", width: "w-[75px] min-w-[75px]" },
+                { id: "AP08", label: "AP08", width: "w-[75px] min-w-[75px]" },
+                { id: "Autoevaluacion", label: "Autoeval. AF", width: "w-[100px] min-w-[100px]" },
+                { id: "Coloquio", label: "Coloquio TFI", width: "w-[100px] min-w-[100px]" },
+                { id: "promedioGEI", label: "Promedio GEI", width: "w-[110px] min-w-[110px]" }
+            ];
+        } else if (modoRolActual === 'ap') {
+            let apSel = apFiltroSeleccionado || "TODAS";
+            if (apSel !== "TODAS") {
+                let apNum = parseInt(apSel.replace("AP", ""), 10);
+                let qStart = (apNum - 1) * 3 + 1;
+                cols = [
+                    { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
+                    { id: "nombre", label: "Alumno", width: "w-[180px] min-w-[180px]" },
+                    { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
+                    { id: "curso", label: "Curso", width: "w-[90px] min-w-[90px]" },
+                    { id: "__materia_ap", label: "Materia", width: "w-[160px] min-w-[160px]" },
+                    { id: "q1", label: `Cuest. L${String(qStart).padStart(2,'0')}`, width: "w-[90px] min-w-[90px]" },
+                    { id: "q2", label: `Cuest. L${String(qStart+1).padStart(2,'0')}`, width: "w-[90px] min-w-[90px]" },
+                    { id: "q3", label: `Cuest. L${String(qStart+2).padStart(2,'0')}`, width: "w-[90px] min-w-[90px]" },
+                    { id: "pio", label: `PIO-L${String(apNum).padStart(2,'0')}`, width: "w-[100px] min-w-[100px]" },
+                    { id: "promAP", label: `Promedio ${apSel}`, width: "w-[100px] min-w-[100px]" },
+                    { id: "estadoAP", label: "Estado AP", width: "w-[130px] min-w-[130px]" }
+                ];
+            } else {
+                cols = [
+                    { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
+                    { id: "nombre", label: "Alumno", width: "w-[180px] min-w-[180px]" },
+                    { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
+                    { id: "curso", label: "Curso", width: "w-[90px] min-w-[90px]" },
+                    { id: "__materia_ap", label: "Materia", width: "w-[160px] min-w-[160px]" },
+                    { id: "AP01", label: "AP01", width: "w-[75px] min-w-[75px]" },
+                    { id: "AP02", label: "AP02", width: "w-[75px] min-w-[75px]" },
+                    { id: "AP03", label: "AP03", width: "w-[75px] min-w-[75px]" },
+                    { id: "AP04", label: "AP04", width: "w-[75px] min-w-[75px]" },
+                    { id: "AP05", label: "AP05", width: "w-[75px] min-w-[75px]" },
+                    { id: "AP06", label: "AP06", width: "w-[75px] min-w-[75px]" },
+                    { id: "AP07", label: "AP07", width: "w-[75px] min-w-[75px]" },
+                    { id: "AP08", label: "AP08", width: "w-[75px] min-w-[75px]" },
+                    { id: "promAPGlobal", label: "Prom. APs", width: "w-[100px] min-w-[100px]" }
+                ];
+            }
+        } else {
+            let matSel = materiaDocenteSeleccionada || "TODAS";
+            if (matSel !== "TODAS") {
+                cols = [
+                    { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
+                    { id: "nombre", label: "Alumno", width: "w-[180px] min-w-[180px]" },
+                    { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
+                    { id: "curso", label: "Curso", width: "w-[90px] min-w-[90px]" },
+                    { id: "__materia_doc", label: "Materia", width: "w-[180px] min-w-[180px]" },
+                    { id: "promedioMateria", label: "Promedio Materia", width: "w-[120px] min-w-[120px]" },
+                    { id: "cantTareas", label: "Tareas Entregadas", width: "w-[120px] min-w-[120px]" },
+                    { id: "maxSemana", label: "Semana Máxima", width: "w-[110px] min-w-[110px]" },
+                    { id: "estadoDocente", label: "Estado Cátedra", width: "w-[140px] min-w-[140px]" }
+                ];
+            } else {
+                cols = [
+                    { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
+                    { id: "nombre", label: "Alumno", width: "w-[180px] min-w-[180px]" },
+                    { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
+                    { id: "curso", label: "Curso", width: "w-[90px] min-w-[90px]" },
+                    { id: "correo", label: "Correo electrónico", width: "w-[160px] min-w-[160px]" }
+                ];
+                listaMateriasDetectadas.forEach(mat => {
+                    cols.push({ id: mat, label: mat, width: "w-[180px] min-w-[180px]" });
+                });
+            }
+        }
+
+        cols.forEach(col => {
+            let stickyStyle = "";
+            let stickyHeaderClass = "";
+            let stickyInputClass = "";
+
+            if (col.id === '__num') {
+                stickyStyle = "position: sticky; left: 0px; z-index: 20;";
+                stickyHeaderClass = "bg-slate-100 dark:bg-[#1e293b]";
+                stickyInputClass = "bg-white dark:bg-[#0f172a]";
+            } else if (col.id === 'nombre') {
+                stickyStyle = "position: sticky; left: 45px; z-index: 20;";
+                stickyHeaderClass = "bg-slate-100 dark:bg-[#1e293b] border-r-2 border-r-slate-300 dark:border-r-slate-700 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.2)]";
+                stickyInputClass = "bg-white dark:bg-[#0f172a] border-r-2 border-r-slate-300 dark:border-r-slate-700 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.2)]";
+            }
+
+            rowHeaders.innerHTML += `
+                <th style="${stickyStyle}" class="p-2 border-r border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] whitespace-pre-line leading-tight ${col.width} ${stickyHeaderClass}">
+                    <div class="flex items-center justify-between">
+                        <span>${col.label}</span>
+                        ${col.id !== '__num' ? `<button data-sort="${col.id}" class="grid-sort-btn text-slate-400 hover:text-slate-800 dark:hover:text-white font-mono text-[10px] bg-slate-200 dark:bg-slate-800 px-1.5 rounded transition">↕️</button>` : ''}
+                    </div>
+                </th>
+            `;
+
+            let filterControl = '';
+            if (col.id === '__num') {
+                filterControl = '';
+            } else if (modoRolActual === 'preceptor' && listaMateriasDetectadas.includes(col.id)) {
+                let matKey = col.id;
+                let matIdClean = matKey.replace(/[^a-zA-Z0-9_-]/g, '_');
+                filterControl = `
+                    <div class="flex items-center justify-between gap-1 p-1 bg-slate-100 dark:bg-slate-900/90 rounded-lg border border-slate-300 dark:border-slate-700 shadow-inner">
+                        <div class="flex items-center gap-1 flex-1">
+                            <button onclick="toggleFiltroSemaforoMateria('${matKey}', 'Continua')" id="btn-sem-${matIdClean}-continua" title="🟢 Continua (≥ 3 tareas)" class="btn-sem-bulb flex-1 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500 text-emerald-700 dark:text-emerald-300 hover:text-white font-bold text-[10px] transition border border-emerald-500/40 flex items-center justify-center">
+                                🟢
+                            </button>
+                            <button onclick="toggleFiltroSemaforoMateria('${matKey}', 'Fluctuante')" id="btn-sem-${matIdClean}-fluctuante" title="🟡 Fluctuante (1-2 tareas)" class="btn-sem-bulb flex-1 py-1 rounded bg-amber-500/20 hover:bg-amber-400 text-amber-700 dark:text-amber-300 hover:text-slate-900 font-bold text-[10px] transition border border-amber-500/40 flex items-center justify-center">
+                                🟡
+                            </button>
+                            <button onclick="toggleFiltroSemaforoMateria('${matKey}', 'Interrumpida')" id="btn-sem-${matIdClean}-interrumpida" title="🔴 Interrumpida (0 tareas)" class="btn-sem-bulb flex-1 py-1 rounded bg-red-500/20 hover:bg-red-500 text-red-700 dark:text-red-300 hover:text-white font-bold text-[10px] transition border border-red-500/40 flex items-center justify-center">
+                                🔴
+                            </button>
+                            <button onclick="toggleFiltroSemaforoMateria('${matKey}', 'No Matriculado')" id="btn-sem-${matIdClean}-nomatriculado" title="🔵 No Matriculado" class="btn-sem-bulb flex-1 py-1 rounded bg-blue-500/20 hover:bg-blue-500 text-blue-700 dark:text-blue-300 hover:text-white font-bold text-[10px] transition border border-blue-500/40 flex items-center justify-center">
+                                🔵
+                            </button>
+                        </div>
+                        <button onclick="limpiarFiltroMateria('${matKey}')" title="Limpiar filtro de ${matKey}" class="px-1 text-[10px] text-slate-400 hover:text-red-500 font-bold">✕</button>
+                    </div>
+                `;
+            } else {
+                filterControl = `
+                    <input type="text" placeholder="Filtrar..." data-col="${col.id}" class="grid-filter-input w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-800 dark:text-slate-200 text-[10px] focus:outline-none focus:border-emerald-500 transition shadow-inner placeholder-slate-400 dark:placeholder-slate-600">
+                `;
+            }
+
+            rowInputs.innerHTML += `
+                <td style="${stickyStyle}" class="p-1.5 border-r border-slate-300 dark:border-slate-800 ${col.width} ${stickyInputClass}">
+                    ${filterControl}
+                </td>
+            `;
+        });
+
+        document.querySelectorAll('.grid-filter-input').forEach(i => {
+            let evtType = i.tagName === 'SELECT' ? 'change' : 'input';
+            i.addEventListener(evtType, (e) => {
+                estadosFiltros[e.target.getAttribute('data-col')] = e.target.value.toLowerCase().trim();
+                aplicarFiltrosYOrdenCompleto();
+            });
+        });
+
+        document.querySelectorAll('.grid-sort-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                let cid = b.getAttribute('data-sort');
+                estadoOrden.asc = (estadoOrden.colId === cid) ? !estadoOrden.asc : true;
+                estadoOrden.colId = cid;
+                aplicarFiltrosYOrdenCompleto();
+            });
+        });
+        
+        actualizarEstilosBotonesSemaforoMateria();
+    }
+
+    function renderizarFilasGridPantalla() {
+        const tbody = document.getElementById('tbody-rows');
+        if (!tbody) return;
+
+        const flgGreen = document.getElementById('chk-green') ? document.getElementById('chk-green').checked : true;
+        const flgYellow = document.getElementById('chk-yellow') ? document.getElementById('chk-yellow').checked : true;
+        const flgRed = document.getElementById('chk-red') ? document.getElementById('chk-red').checked : true;
+        const flgBlue = document.getElementById('chk-blue') ? document.getElementById('chk-blue').checked : true;
+
+        let cV = 0, cA = 0, cR = 0, cB = 0;
+        datasetFiltradoActual.forEach(fila => {
+            let estadosMat = Object.values(fila.__estadosMateria || {});
+            if (estadosMat.includes("🟢 Continua")) cV++;
+            else if (estadosMat.includes("🟡 Fluctuante")) cA++;
+            else if (estadosMat.includes("🔴 Interrumpida")) cR++;
+            else cB++;
+        });
+
+        if (document.getElementById('stat-green')) document.getElementById('stat-green').innerText = cV;
+        if (document.getElementById('stat-yellow')) document.getElementById('stat-yellow').innerText = cA;
+        if (document.getElementById('stat-red')) document.getElementById('stat-red').innerText = cR;
+        if (document.getElementById('stat-blue')) document.getElementById('stat-blue').innerText = cB;
+        
+        const colorStats = document.getElementById('color-stats');
+        if (colorStats) {
+            colorStats.classList.remove('hidden');
+            colorStats.classList.add('flex');
+        }
+
+        if (document.getElementById('rows-count')) {
+            document.getElementById('rows-count').innerText = `Alumnos: ${datasetFiltradoActual.length}`;
+        }
+        tbody.innerHTML = "";
+
+        let matSel = materiaDocenteSeleccionada || "TODAS";
+        let apSel = apFiltroSeleccionado || "TODAS";
+        let apNumSelected = apSel !== "TODAS" ? parseInt(apSel.replace("AP", ""), 10) : null;
+
+        let filasAProcesar = [];
+        if (modoRolActual === 'preceptor') {
+            filasAProcesar = datasetFiltradoActual;
+        } else if (modoRolActual === 'gei' || modoRolActual === 'docente' || modoRolActual === 'ap') {
+            datasetFiltradoActual.forEach(f => {
+                let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+                let materiasSub = (matSel !== "TODAS" && listaMateriasDetectadas.includes(matSel))
+                    ? [matSel]
+                    : listaMateriasDetectadas;
+
+                materiasSub.forEach(mat => {
+                    let metadata = estMaster ? estMaster.materiasMap[mat] : null;
+                    let itemsMap = metadata ? metadata.items : {};
+                    let gei = calcularNotasGEI(itemsMap);
+
+                    let sumaG = 0, cntG = 0;
+                    ["AP01","AP02","AP03","AP04","AP05","AP06","AP07","AP08","Autoevaluacion","Coloquio"].forEach(k => {
+                        if (gei[k] !== "—" && typeof gei[k] === "number") { sumaG += gei[k]; cntG++; }
+                    });
+                    let promGEIVal = cntG > 0 ? parseFloat((sumaG / cntG).toFixed(2)) : "—";
+
+                    let q1Val = "—", q2Val = "—", q3Val = "—", pioVal = "—", notasAPArr = [];
+                    if (apNumSelected) {
+                        Object.keys(itemsMap).forEach(itemName => {
+                            let itemData = itemsMap[itemName];
+                            if (itemData.notaFinal === null || isNaN(itemData.notaFinal)) return;
+                            let info = itemData.infoEaD;
+                            if (!info || info.apNum !== apNumSelected) return;
+
+                            if (info.tipo === 'CUESTIONARIO') {
+                                if (info.semanaAP === 1) { q1Val = itemData.notaFinal; notasAPArr.push(q1Val); }
+                                else if (info.semanaAP === 2) { q2Val = itemData.notaFinal; notasAPArr.push(q2Val); }
+                                else if (info.semanaAP === 3) { q3Val = itemData.notaFinal; notasAPArr.push(q3Val); }
+                            } else if (info.tipo === 'PIO') {
+                                pioVal = itemData.notaFinal;
+                                notasAPArr.push(pioVal);
+                            }
+                        });
+                    }
+
+                    let promAPVal = notasAPArr.length > 0 ? parseFloat((notasAPArr.reduce((a,b)=>a+b,0)/notasAPArr.length).toFixed(2)) : "—";
+                    let estadoAPTxt = "🔴 Sin entregas";
+                    if (notasAPArr.length === 4) estadoAPTxt = "🟢 Completo (4/4)";
+                    else if (notasAPArr.length >= 1) estadoAPTxt = `🟡 Parcial (${notasAPArr.length}/4)`;
+
+                    filasAProcesar.push({
+                        ...f,
+                        __materiaSub: mat,
+                        __gei: gei,
+                        __promGEI: promGEIVal,
+                        __q1: q1Val,
+                        __q2: q2Val,
+                        __q3: q3Val,
+                        __pio: pioVal,
+                        __promAP: promAPVal,
+                        __estadoAP: estadoAPTxt,
+                        __cantTareasSub: metadata ? Object.keys(metadata.items).length : 0,
+                        __maxSemanaSub: metadata ? metadata.maxSemana : 0
+                    });
+                });
+            });
+        }
+
+        filasAProcesar.slice(0, 150).forEach((fila, index) => {
+            let tr = document.createElement('tr');
+            tr.className = "group hover:bg-slate-100 dark:hover:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800/50 transition";
+
+            const createCell = (text, width, customClass = "") => {
+                let td = document.createElement('td');
+                td.className = `p-2 border-r border-slate-300 dark:border-slate-800/50 truncate text-[10px] ${width} ${customClass}`;
+                td.innerText = text !== undefined && text !== null ? text : "—";
+                return td;
+            };
+
+            const formatGradeCell = (val, width) => {
+                let custom = "text-center font-mono font-bold ";
+                if (typeof val === 'number') {
+                    if (val >= 7) custom += "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400";
+                    else if (val >= 4) custom += "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400";
+                    else custom += "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400";
+                } else {
+                    custom += "text-slate-400 dark:text-slate-600 font-normal";
+                }
+                return createCell(val, width, custom);
+            };
+
+            let tdNum = document.createElement('td');
+            tdNum.style.cssText = "position: sticky; left: 0px; z-index: 10;";
+            tdNum.className = "p-2 border-r border-slate-300 dark:border-slate-800/50 text-slate-500 font-mono text-center bg-white dark:bg-[#1e293b] group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors w-[45px] min-w-[45px]";
+            tdNum.innerText = index + 1;
+            tr.appendChild(tdNum);
+
+            let tdNom = document.createElement('td');
+            tdNom.style.cssText = "position: sticky; left: 45px; z-index: 10;";
+            tdNom.className = "p-2 border-r-2 border-r-slate-300 dark:border-r-slate-700 truncate font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-[#1e293b] group-hover:bg-slate-100 dark:group-hover:bg-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.15)] transition-colors w-[180px] min-w-[180px]";
+            tdNom.innerText = fila.nombre;
+            tr.appendChild(tdNom);
+
+            tr.appendChild(createCell(fila.nombre_usuario, "w-[100px] min-w-[100px]", "font-mono text-amber-600 dark:text-amber-400/80"));
+
+            if (modoRolActual === 'preceptor') {
+                tr.appendChild(createCell(fila.cuil, "w-[120px] min-w-[120px]", "font-mono"));
+                tr.appendChild(createCell(fila.curso, "w-[100px] min-w-[100px]"));
+                tr.appendChild(createCell(fila.telefono, "w-[110px] min-w-[110px]"));
+                tr.appendChild(createCell(fila.localidad !== "—" ? fila.localidad : fila.tutor, "w-[140px] min-w-[140px]"));
+                tr.appendChild(createCell(fila.correo, "w-[140px] min-w-[140px]", "text-slate-500"));
+
+                listaMateriasDetectadas.forEach(mat => {
+                    let tdMat = document.createElement('td');
+                    tdMat.className = "p-2 border-r border-slate-300 dark:border-slate-800/50 text-[10px] break-words whitespace-pre-line leading-relaxed transition-all duration-300";
+                    let st = fila.__estadosMateria[mat] || "🔴 Interrumpida";
+                    tdMat.innerText = fila[mat];
+
+                    let estaEncendido = (st === "🟢 Continua" && flgGreen) ||
+                                         (st === "🟡 Fluctuante" && flgYellow) ||
+                                         (st === "🔴 Interrumpida" && flgRed) ||
+                                         (st === "🔵 No Matriculado" && flgBlue);
+
+                    if (!estaEncendido) {
+                        tdMat.className += " bg-slate-100 dark:bg-[#0f172a] text-slate-400 line-through opacity-40";
+                    } else {
+                        if(st === "🟢 Continua") tdMat.className += " bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 border-l-2 border-l-emerald-500 font-medium";
+                        else if(st === "🟡 Fluctuante") tdMat.className += " bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 border-l-2 border-l-amber-500 font-medium";
+                        else if(st === "🔴 Interrumpida") tdMat.className += " bg-red-50 dark:bg-red-950/10 text-red-600 dark:text-red-400 border-l-2 border-l-red-500";
+                        else if(st === "🔵 No Matriculado") tdMat.className += " bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border-l-2 border-l-blue-500 font-medium opacity-80";
+                    }
+                    tr.appendChild(tdMat);
+                });
+            } else if (modoRolActual === 'gei') {
+                tr.appendChild(createCell(fila.curso, "w-[90px] min-w-[90px]"));
+                tr.appendChild(createCell(fila.__materiaSub, "w-[160px] min-w-[160px]", "font-bold text-sky-600 dark:text-sky-400"));
+
+                let g = fila.__gei || {};
+                ["AP01","AP02","AP03","AP04","AP05","AP06","AP07","AP08"].forEach(apKey => {
+                    tr.appendChild(formatGradeCell(g[apKey], "w-[75px] min-w-[75px]"));
+                });
+                tr.appendChild(formatGradeCell(g["Autoevaluacion"], "w-[100px] min-w-[100px]"));
+                tr.appendChild(formatGradeCell(g["Coloquio"], "w-[100px] min-w-[100px]"));
+                tr.appendChild(formatGradeCell(fila.__promGEI, "w-[110px] min-w-[110px]"));
+
+            } else if (modoRolActual === 'ap') {
+                tr.appendChild(createCell(fila.curso, "w-[90px] min-w-[90px]"));
+                tr.appendChild(createCell(fila.__materiaSub, "w-[160px] min-w-[160px]", "font-bold text-purple-600 dark:text-purple-400"));
+
+                if (apNumSelected) {
+                    tr.appendChild(formatGradeCell(fila.__q1, "w-[90px] min-w-[90px]"));
+                    tr.appendChild(formatGradeCell(fila.__q2, "w-[90px] min-w-[90px]"));
+                    tr.appendChild(formatGradeCell(fila.__q3, "w-[90px] min-w-[90px]"));
+                    tr.appendChild(formatGradeCell(fila.__pio, "w-[100px] min-w-[100px]"));
+                    tr.appendChild(formatGradeCell(fila.__promAP, "w-[100px] min-w-[100px]"));
+                    
+                    let tdStAP = createCell(fila.__estadoAP, "w-[130px] min-w-[130px]", "font-bold text-center");
+                    if (fila.__estadoAP.includes("Completo")) tdStAP.className += " bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300";
+                    else if (fila.__estadoAP.includes("Parcial")) tdStAP.className += " bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300";
+                    else tdStAP.className += " bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400";
+                    tr.appendChild(tdStAP);
+                } else {
+                    let g = fila.__gei || {};
+                    ["AP01","AP02","AP03","AP04","AP05","AP06","AP07","AP08"].forEach(apKey => {
+                        tr.appendChild(formatGradeCell(g[apKey], "w-[75px] min-w-[75px]"));
+                    });
+                    tr.appendChild(formatGradeCell(fila.__promAP, "w-[100px] min-w-[100px]"));
+                }
+            } else {
+                if (matSel !== "TODAS") {
+                    tr.appendChild(createCell(fila.curso, "w-[90px] min-w-[90px]"));
+                    tr.appendChild(createCell(fila.__materiaSub, "w-[180px] min-w-[180px]", "font-bold text-emerald-600 dark:text-emerald-400"));
+                    tr.appendChild(formatGradeCell(fila.__promGEI, "w-[120px] min-w-[120px]"));
+                    tr.appendChild(createCell(`${fila.__cantTareasSub} de 32`, "w-[120px] min-w-[120px]", "text-center font-bold"));
+                    tr.appendChild(createCell(fila.__maxSemanaSub > 0 ? `Semana ${fila.__maxSemanaSub}` : "Sin entregas", "w-[110px] min-w-[110px]", "text-center"));
+                    
+                    let stTxt = "🔴 Interrumpida";
+                    if (fila.__cantTareasSub >= 3) stTxt = "🟢 Continua";
+                    else if (fila.__cantTareasSub >= 1) stTxt = "🟡 Fluctuante";
+                    let tdStDoc = createCell(stTxt, "w-[140px] min-w-[140px]", "font-bold text-center");
+                    if (stTxt.includes("Continua")) tdStDoc.className += " bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300";
+                    else if (stTxt.includes("Fluctuante")) tdStDoc.className += " bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300";
+                    else tdStDoc.className += " bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400";
+                    tr.appendChild(tdStDoc);
+                } else {
+                    tr.appendChild(createCell(fila.curso, "w-[90px] min-w-[90px]"));
+                    tr.appendChild(createCell(fila.correo, "w-[160px] min-w-[160px]", "text-slate-500"));
+                    listaMateriasDetectadas.forEach(mat => {
+                        let metadata = baseEstudiantesMaster[fila.nombre_usuario] ? baseEstudiantesMaster[fila.nombre_usuario].materiasMap[mat] : null;
+                        let itemsMap = metadata ? metadata.items : {};
+                        let gei = calcularNotasGEI(itemsMap);
+                        let sumaG = 0, cntG = 0;
+                        ["AP01","AP02","AP03","AP04","AP05","AP06","AP07","AP08","Autoevaluacion","Coloquio"].forEach(k => {
+                            if (gei[k] !== "—" && typeof gei[k] === "number") { sumaG += gei[k]; cntG++; }
+                        });
+                        let promMat = cntG > 0 ? parseFloat((sumaG / cntG).toFixed(2)) : "—";
+                        tr.appendChild(formatGradeCell(promMat, "w-[180px] min-w-[180px]"));
+                    });
+                }
+            }
+
+            tbody.appendChild(tr);
+        });
+        
+        if (filasAProcesar.length > 150) {
+            let totalCols = document.querySelectorAll('#th-headers th').length;
+            let trMsg = document.createElement('tr');
+            trMsg.innerHTML = `<td colspan="${totalCols}" class="p-4 text-center text-slate-500 text-xs italic border-t border-slate-200 dark:border-slate-800">Mostrando los primeros 150 resultados. Usa la exportación a Excel para descargar la planilla completa.</td>`;
+            tbody.appendChild(trMsg);
+        }
+    }
+
+    document.getElementById('chk-green').addEventListener('change', renderizarFilasGridPantalla);
+    document.getElementById('chk-yellow').addEventListener('change', renderizarFilasGridPantalla);
+    document.getElementById('chk-red').addEventListener('change', renderizarFilasGridPantalla);
+    document.getElementById('chk-blue').addEventListener('change', renderizarFilasGridPantalla);
+
+    // EXPORTADOR
+    document.getElementById('btn-export').addEventListener('click', () => {
+        if(datasetFiltradoActual.length === 0) return;
+        
+        printLog("Preparando archivo Excel para descargar...", false, false);
+        const wb = XLSX.utils.book_new();
+
+        // 1. HOJA DE RESUMEN GENERAL (Matriz de todas las materias)
+        let aoaResumen = [];
+        aoaResumen.push([`REPORTE DE TRAYECTORIAS EAD - RESUMEN GENERAL`]);
+        aoaResumen.push([`Vista panorámica de todas las materias`]);
+        aoaResumen.push([]);
+        
+        let headersResumen = ["ALUMNO/A", "DNI", "CORREO", "CURSO", "TELÉFONO"];
+        listaMateriasDetectadas.forEach(mat => {
+            headersResumen.push(`ESTADO (${mat})`);
+            headersResumen.push(`TAREAS (${mat})`);
+        });
+        aoaResumen.push(headersResumen);
+
+        datasetFiltradoActual.forEach(f => {
+            let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+            let cuil = estMaster ? estMaster.cuil : "—";
+            let curso = estMaster ? estMaster.curso : "—";
+            let telefono = estMaster ? estMaster.telefono : "—";
+            
+            let filaArray = [f.nombre, f.nombre_usuario, f.correo, curso, telefono];
+            
+            listaMateriasDetectadas.forEach(mat => {
+                let stRaw = f.__estadosMateria[mat] || "Interrumpida";
+                let estadoLimpio = stRaw.includes(" ") ? stRaw.split(' ')[1] : stRaw;
+                filaArray.push(estadoLimpio);
+                filaArray.push(f.__cantidadesMateria[mat] || 0);
+            });
+            aoaResumen.push(filaArray);
+        });
+
+        const ws1 = XLSX.utils.aoa_to_sheet(aoaResumen);
+        
+        // Estilo encabezados Hoja 1
+        let numColsResumen = 5 + (listaMateriasDetectadas.length * 2);
+        
+        if(ws1['A1']) ws1['A1'].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14 }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { vertical: "center" } };
+        ws1['!merges'] = [
+            { s: {r: 0, c: 0}, e: {r: 0, c: numColsResumen - 1} },
+            { s: {r: 1, c: 0}, e: {r: 1, c: numColsResumen - 1} }
+        ];
+        if(ws1['A2']) ws1['A2'].s = { font: { italic: true, color: { rgb: "1A3A5C" }, sz: 11 } };
+        
+        for(let C = 0; C < numColsResumen; ++C) {
+            let addr = XLSX.utils.encode_cell({r: 3, c: C});
+            if(ws1[addr]) {
+                ws1[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { horizontal: "center", vertical: "center" } };
+            }
+        }
+
+        for(let R = 4; R < aoaResumen.length; ++R) {
+            for(let C = 0; C < numColsResumen; ++C) {
+                let addr = XLSX.utils.encode_cell({r: R, c: C});
+                if(!ws1[addr]) continue;
+                
+                let cellStyle = { alignment: { vertical: "center" }, border: { bottom: { style: "thin", color: { rgb: "E5E7EB" } } } };
+                
+                // Colorizar celdas de estado (columnas 5, 7, 9...)
+                if(C >= 5 && C % 2 !== 0) {
+                    let val = aoaResumen[R][C];
+                    if(val === "Continua") { cellStyle.fill = { fgColor: { rgb: "D5F5E3" } }; cellStyle.font = { color: { rgb: "196F3D" }, bold: true }; }
+                    else if(val === "Fluctuante") { cellStyle.fill = { fgColor: { rgb: "FCF3CF" } }; cellStyle.font = { color: { rgb: "D68910" }, bold: true }; }
+                    else if(val === "Interrumpida") { cellStyle.fill = { fgColor: { rgb: "FADBD8" } }; cellStyle.font = { color: { rgb: "922B21" }, bold: true }; }
+                    else if(val === "Matriculado") { cellStyle.fill = { fgColor: { rgb: "EBF5FB" } }; cellStyle.font = { color: { rgb: "2874A6" } }; }
+                }
+                ws1[addr].s = cellStyle;
+            }
+        }
+
+        let cols1 = [{wch: 35}, {wch: 15}, {wch: 35}, {wch: 15}, {wch: 30}];
+        for(let i=0; i < listaMateriasDetectadas.length; i++) {
+            cols1.push({wch: 22}); // ESTADO
+            cols1.push({wch: 12}); // TAREAS
+        }
+        ws1['!cols'] = cols1;
+        
+        let lastColStr1 = XLSX.utils.encode_col(numColsResumen - 1);
+        ws1['!autofilter'] = { ref: `A4:${lastColStr1}${aoaResumen.length}` };
+        ws1['!views'] = [{state: 'frozen', xSplit: 5, ySplit: 4, topLeftCell: 'F5', activeCell: 'F5'}];
+        
+        XLSX.utils.book_append_sheet(wb, ws1, "Resumen General");
+
+        // 1.B. HOJA CARGA MASIVA GEI (MEMOE-2026-36-E-GDEMZA-DEPJA#DGE)
+        let aoaGEI = [];
+        aoaGEI.push([`REPORTE DE CARGA GEI - DEPJA DGE MENDOZA (10 NOTAS POR MATERIA)`]);
+        aoaGEI.push([`Estructura oficial para vuelco masivo a la plataforma GEI: 8 Notas AP + Autoevaluación + Coloquio Integrador`]);
+        aoaGEI.push([]);
+        aoaGEI.push(["DNI / USUARIO", "ALUMNO/A", "CURSO", "MATERIA", "AP01", "AP02", "AP03", "AP04", "AP05", "AP06", "AP07", "AP08", "AUTOEVALUACIÓN", "COLOQUIO INTEGRADOR", "PROMEDIO GEI"]);
+
+        datasetFiltradoActual.forEach(f => {
+            let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+            let curso = estMaster ? estMaster.curso : "—";
+
+            listaMateriasDetectadas.forEach(mat => {
+                if (!estMaster || !estMaster.materiasMap[mat] || !estMaster.materiasMap[mat].matriculado) return;
+                let itemsMap = estMaster.materiasMap[mat].items;
+                let gei = calcularNotasGEI(itemsMap);
+
+                let sumaGEI = 0, countGEI = 0;
+                ["AP01", "AP02", "AP03", "AP04", "AP05", "AP06", "AP07", "AP08", "Autoevaluacion", "Coloquio"].forEach(k => {
+                    if (gei[k] !== "—" && typeof gei[k] === "number") {
+                        sumaGEI += gei[k];
+                        countGEI++;
+                    }
+                });
+                let promGEI = countGEI > 0 ? (sumaGEI / countGEI).toFixed(2) : "—";
+
+                aoaGEI.push([
+                    f.nombre_usuario,
+                    f.nombre,
+                    curso,
+                    mat,
+                    gei["AP01"], gei["AP02"], gei["AP03"], gei["AP04"],
+                    gei["AP05"], gei["AP06"], gei["AP07"], gei["AP08"],
+                    gei["Autoevaluacion"],
+                    gei["Coloquio"],
+                    promGEI
+                ]);
+            });
+        });
+
+        const wsGEI = XLSX.utils.aoa_to_sheet(aoaGEI);
+        if(wsGEI['A1']) wsGEI['A1'].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14 }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { vertical: "center" } };
+        wsGEI['!merges'] = [
+            { s: {r: 0, c: 0}, e: {r: 0, c: 14} },
+            { s: {r: 1, c: 0}, e: {r: 1, c: 14} }
+        ];
+        if(wsGEI['A2']) wsGEI['A2'].s = { font: { italic: true, color: { rgb: "1A3A5C" }, sz: 11 } };
+        
+        for(let C = 0; C < 15; ++C) {
+            let addr = XLSX.utils.encode_cell({r: 3, c: C});
+            if(wsGEI[addr]) {
+                wsGEI[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10 }, fill: { fgColor: { rgb: "0284C7" } }, alignment: { horizontal: "center", vertical: "center" } };
+            }
+        }
+
+        for(let R = 4; R < aoaGEI.length; ++R) {
+            for(let C = 0; C < 15; ++C) {
+                let addr = XLSX.utils.encode_cell({r: R, c: C});
+                if(!wsGEI[addr]) continue;
+                wsGEI[addr].s = { alignment: { vertical: "center", horizontal: C >= 4 ? "center" : "left" }, border: { bottom: { style: "thin", color: { rgb: "E5E7EB" } } } };
+            }
+        }
+
+        wsGEI['!cols'] = [
+            {wch: 15}, {wch: 35}, {wch: 15}, {wch: 25},
+            {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
+            {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
+            {wch: 18}, {wch: 22}, {wch: 16}
+        ];
+        wsGEI['!autofilter'] = { ref: `A4:O${aoaGEI.length}` };
+        wsGEI['!views'] = [{state: 'frozen', xSplit: 4, ySplit: 4, topLeftCell: 'E5', activeCell: 'E5'}];
+
+        XLSX.utils.book_append_sheet(wb, wsGEI, "Carga Masiva GEI");
+
+        // 2. HOJAS POR MATERIA (Dashboards Premium)
+        listaMateriasDetectadas.forEach(mat => {
+            let alumnosMateria = datasetFiltradoActual.filter(f => {
+                let est = baseEstudiantesMaster[f.nombre_usuario];
+                return est && est.materiasMap[mat] && est.materiasMap[mat].matriculado;
+            });
+
+            if(alumnosMateria.length === 0) return;
+
+            let cV = 0, cA = 0, cR = 0;
+            alumnosMateria.forEach(f => {
+                let st = f.__estadosMateria[mat] || "";
+                if(st.includes("Continua")) cV++;
+                else if(st.includes("Fluctuante")) cA++;
+                else if(st.includes("Interrumpida")) cR++;
+            });
+            let total = cV + cA + cR;
+            let pV = total > 0 ? Math.round((cV/total)*100) : 0;
+            let pA = total > 0 ? Math.round((cA/total)*100) : 0;
+            let pR = total > 0 ? Math.round((cR/total)*100) : 0;
+
+            let aoa = [];
+            aoa.push([`REPORTE DE TRAYECTORIAS EAD - ${mat.toUpperCase()}`]);
+            aoa.push([`Historial de notas · Análisis de Trayectorias`]);
+            aoa.push([]);
+            // Ajustar merges (ahora son 10 columnas: A a J)
+            aoa.push(["", "👥 TOTAL ALUMNOS", "🟢 CONTINUA", "", "🟠 FLUCTUANTE", "", "🔴 INTERRUMPIDA", "", "", ""]);
+            aoa.push(["", total, cV, "", cA, "", cR, "", "", ""]);
+            aoa.push(["", "100% del total", `${pV}% del total`, "", `${pA}% del total`, "", `${pR}% del total`, "", "", ""]);
+            aoa.push([]);
+            aoa.push(["#", "ALUMNO/A", "DNI", "CORREO", "CURSO", "TELÉFONO", "ESTADO", "N° TAREAS", "ÚLTIMA SEMANA", "PROMEDIO"]);
+
+            let startIndexData = 8;
+            alumnosMateria.forEach((f, idx) => {
+                let stRaw = f.__estadosMateria[mat] || "🔴 Interrumpida";
+                let tareas = f.__cantidadesMateria[mat] || 0;
+                let progreso = f.__maxSemanaMateria[mat] > 0 ? `Sem. ${f.__maxSemanaMateria[mat]}` : `—`;
+                
+                // Calcular promedio real
+                let promedio = "—";
+                let estData = baseEstudiantesMaster[f.nombre_usuario].materiasMap[mat];
+                if (estData && estData.items) {
+                    let suma = 0; let count = 0;
+                    Object.values(estData.items).forEach(item => {
+                        if (item.notaFinal !== null && !isNaN(item.notaFinal)) {
+                            suma += parseFloat(item.notaFinal);
+                            count++;
+                        }
+                    });
+                    if(count > 0) promedio = (suma/count).toFixed(2);
+                }
+
+                let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+                let cuil = estMaster ? estMaster.cuil : "—";
+                let curso = estMaster ? estMaster.curso : "—";
+                let telefono = estMaster ? estMaster.telefono : "—";
+
+                aoa.push([idx + 1, f.nombre, f.nombre_usuario, f.correo, curso, telefono, stRaw.toUpperCase(), tareas, progreso, promedio]);
+            });
+
+            const wsMat = XLSX.utils.aoa_to_sheet(aoa);
+
+            // Estilos Dashboard
+            if(wsMat['A1']) wsMat['A1'].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14 }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { vertical: "center" } };
+            wsMat['!merges'] = [
+                { s: {r: 0, c: 0}, e: {r: 0, c: 9} },
+                { s: {r: 1, c: 0}, e: {r: 1, c: 9} }
+            ];
+            if(wsMat['A2']) wsMat['A2'].s = { font: { italic: true, color: { rgb: "1A3A5C" }, sz: 11 } };
+            
+            // Colores de las estadísticas (Ajustado B4 en vez de A4)
+            const colorStats = { "B4": "2E86AB", "C4": "27AE60", "E4": "E67E22", "G4": "E74C3C" };
+            for (let [cell, color] of Object.entries(colorStats)) {
+                if(wsMat[cell]) wsMat[cell].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: color } }, alignment: { horizontal: "center" } };
+                let numCell = cell.replace('4', '5');
+                if(wsMat[numCell]) wsMat[numCell].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: "center" } };
+                let percCell = cell.replace('4', '6');
+                if(wsMat[percCell]) wsMat[percCell].s = { font: { color: { rgb: "555555" } }, alignment: { horizontal: "center" } };
+            }
+
+            for(let c=0; c<=9; c++) {
+                let addr = XLSX.utils.encode_cell({r: 7, c: c});
+                if(wsMat[addr]) wsMat[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { horizontal: "center" } };
+            }
+
+            for(let r=startIndexData; r < aoa.length; r++) {
+                let rowData = aoa[r];
+                let estado = rowData[6] || "";
+                let bgRow = "FFFFFF";
+                if(estado.includes("CONTINUA")) bgRow = "D5F5E3"; 
+                else if(estado.includes("FLUCTUANTE")) bgRow = "FCF3CF"; 
+                else if(estado.includes("INTERRUMPIDA")) bgRow = "FADBD8";
+
+                for(let c=0; c<=9; c++) {
+                    let addr = XLSX.utils.encode_cell({r: r, c: c});
+                    if(!wsMat[addr]) continue;
+                    wsMat[addr].s = { fill: { fgColor: { rgb: bgRow } }, alignment: { vertical: "center" }, border: { bottom: { style: "thin", color: { rgb: "E5E7EB" } } } };
+                    if(c===6) wsMat[addr].s.font = { bold: true, color: { rgb: estado.includes("CONTINUA")?"196F3D":estado.includes("FLUCTUANTE")?"D68910":"922B21" } }; // ESTADO is col G
+                    if(c===9 && rowData[9] !== "—") wsMat[addr].s.font = { bold: true };
+                }
+            }
+
+            wsMat['!cols'] = [
+                {wch: 5},  // #
+                {wch: 35}, // ALUMNO
+                {wch: 15}, // DNI
+                {wch: 35}, // CORREO
+                {wch: 15}, // CURSO
+                {wch: 30}, // TELEFONO
+                {wch: 22}, // ESTADO
+                {wch: 16}, // TAREAS
+                {wch: 15}, // SEMANA
+                {wch: 18}  // PROMEDIO
+            ];
+            
+            // Activar Filtros Automáticos en la fila 8 (A8:J...)
+            wsMat['!autofilter'] = { ref: `A8:J${aoa.length}` };
+            wsMat['!views'] = [{state: 'frozen', xSplit: 6, ySplit: 8, topLeftCell: 'G9', activeCell: 'G9'}];
+
+            let safeName = mat.substring(0, 31).replace(/[\\/?*\[\]]/g, '');
+            XLSX.utils.book_append_sheet(wb, wsMat, safeName);
+        });
+
+        // 3. HOJA FINAL: DETALLE DOCENTES (Matriz de semanas)
+        let aoaDocente = [];
+        aoaDocente.push([`REPORTE DE TRAYECTORIAS EAD - DETALLE DOCENTES`]);
+        aoaDocente.push([`Seguimiento semanal de actividades por estudiante y materia`]);
+        aoaDocente.push([]);
+        
+        let maxSemanasDetectadas = 0;
+        datasetFiltradoActual.forEach(f => {
+            listaMateriasDetectadas.forEach(mat => {
+                let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+                if(estMaster && estMaster.materiasMap[mat] && estMaster.materiasMap[mat].matriculado) {
+                    Object.values(estMaster.materiasMap[mat].items).forEach(item => {
+                        if(item.semana > maxSemanasDetectadas) maxSemanasDetectadas = item.semana;
+                    });
+                }
+            });
+        });
+
+        let headersDocente = ["ALUMNO/A", "DNI / USUARIO", "MATERIA"];
+        for(let i = 1; i <= maxSemanasDetectadas; i++) {
+            headersDocente.push(`Semana ${i}`);
+        }
+        aoaDocente.push(headersDocente);
+
+        let dataStartIndex = 4;
+        let prevStudent = null;
+        let bgWhite = "FFFFFF", bgGray = "F8FAFC";
+        let currentBg = bgWhite;
+
+        datasetFiltradoActual.forEach(f => {
+            if(prevStudent !== f.nombre_usuario) {
+                currentBg = (currentBg === bgWhite) ? bgGray : bgWhite;
+                prevStudent = f.nombre_usuario;
+            }
+
+            listaMateriasDetectadas.forEach(mat => {
+                let estMaster = baseEstudiantesMaster[f.nombre_usuario];
+                if(!estMaster) return;
+                let metadataMateria = estMaster.materiasMap[mat];
+                if(!metadataMateria || !metadataMateria.matriculado) return; 
+
+                let filaArray = [f.nombre, f.nombre_usuario, mat];
+                let tempSemanas = {};
+                for(let i=1; i<=maxSemanasDetectadas; i++) tempSemanas[i] = [];
+                
+                Object.values(metadataMateria.items).forEach(itemData => {
+                    if(itemData.semana > 0) {
+                        let notaStr = itemData.notaFinal !== null ? itemData.notaFinal : "Entregado";
+                        let fechaStr = "";
+                        if(itemData.ts && itemData.ts > 0) {
+                            let fObj = new Date(itemData.ts);
+                            if(!isNaN(fObj.getTime())) {
+                                let dia = fObj.getDate().toString().padStart(2, '0');
+                                let mes = (fObj.getMonth() + 1).toString().padStart(2, '0');
+                                fechaStr = ` (${dia}/${mes})`;
+                            }
+                        }
+                        tempSemanas[itemData.semana].push(`${notaStr}${fechaStr}`);
+                    }
+                });
+                
+                for(let i=1; i<=maxSemanasDetectadas; i++) {
+                    filaArray.push(tempSemanas[i].join('\n'));
+                }
+                filaArray.push(currentBg); // Hidden info
+                aoaDocente.push(filaArray);
+            });
+        });
+
+        const ws2 = XLSX.utils.aoa_to_sheet(aoaDocente.map(r => r.slice(0, 3 + maxSemanasDetectadas)));
+        
+        if(ws2['A1']) ws2['A1'].s = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 14 }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { vertical: "center" } };
+        ws2['!merges'] = [
+            { s: {r: 0, c: 0}, e: {r: 0, c: 2 + maxSemanasDetectadas} },
+            { s: {r: 1, c: 0}, e: {r: 1, c: 2 + maxSemanasDetectadas} }
+        ];
+        if(ws2['A2']) ws2['A2'].s = { font: { italic: true, color: { rgb: "1A3A5C" }, sz: 11 } };
+        
+        for(let C = 0; C <= 2 + maxSemanasDetectadas; ++C) {
+            let addr = XLSX.utils.encode_cell({r: 3, c: C});
+            if(ws2[addr]) ws2[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1A3A5C" } }, alignment: { horizontal: "center" } };
+        }
+
+        for(let R = dataStartIndex; R < aoaDocente.length; ++R) {
+            let bgFila = aoaDocente[R][3 + maxSemanasDetectadas];
+            for(let C = 0; C <= 2 + maxSemanasDetectadas; ++C) {
+                let addr = XLSX.utils.encode_cell({r: R, c: C});
+                if(!ws2[addr]) continue;
+                
+                let cellStyle = { fill: { fgColor: { rgb: bgFila } }, alignment: { vertical: "top" }, border: { bottom: { style: "thin", color: { rgb: "E5E7EB" } } } };
+                
+                if(C >= 3) {
+                    cellStyle.alignment.wrapText = true;
+                    let val = aoaDocente[R][C] || "";
+                    if(val) {
+                        let hasRed = false; let hasGreen = false; let isEntregado = false;
+                        if(val.includes("Entregado")) isEntregado = true;
+                        
+                        let notasArray = val.split('\n');
+                        for(let line of notasArray) {
+                            let n = parseFloat(line.split(' ')[0]);
+                            if(!isNaN(n)) {
+                                if(n < 7) hasRed = true;
+                                else if(n >= 7) hasGreen = true;
+                            }
+                        }
+                        
+                        if(hasRed) { cellStyle.fill.fgColor.rgb = "FADBD8"; cellStyle.font = { color: { rgb: "922B21" }, bold: true }; }
+                        else if(hasGreen) { cellStyle.fill.fgColor.rgb = "D5F5E3"; cellStyle.font = { color: { rgb: "196F3D" }, bold: true }; }
+                        else if(isEntregado) { cellStyle.fill.fgColor.rgb = "FCF3CF"; cellStyle.font = { color: { rgb: "B9770E" }, bold: true }; }
+                    }
+                }
+                
+                ws2[addr].s = cellStyle;
+            }
+        }
+
+        let cols2 = [{wch: 35}, {wch: 15}, {wch: 30}];
+        for(let i=0; i < maxSemanasDetectadas; i++) cols2.push({wch: 16});
+        ws2['!cols'] = cols2;
+        
+        let lastColStr = XLSX.utils.encode_col(2 + maxSemanasDetectadas);
+        ws2['!autofilter'] = { ref: `A4:${lastColStr}${aoaDocente.length}` };
+        ws2['!views'] = [{state: 'frozen', xSplit: 3, ySplit: 4, topLeftCell: 'D5', activeCell: 'D5'}];
+
+        XLSX.utils.book_append_sheet(wb, ws2, "Detalle Docentes");
+
+        XLSX.writeFile(wb, "Reporte_Trayectorias_DGE.xlsx");
+        printLog("¡Excel descargado con Dashboards Múltiples!", false, true);
+    });
+</script>
+
+</body>
+</html>
