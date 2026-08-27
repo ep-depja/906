@@ -345,6 +345,77 @@
         </div>
     </div>
 
+    <!-- MODAL DE ENVÍO DE MENSAJES POR WHATSAPP -->
+    <div id="modal-whatsapp" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+        <div class="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl max-w-lg w-full relative space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="text-emerald-500 text-xl">💬</span> Contactar por WhatsApp
+                </h3>
+                <button onclick="cerrarModalWhatsApp()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg font-bold p-1">✕</button>
+            </div>
+
+            <!-- Ficha resumida del estudiante -->
+            <div class="bg-slate-50 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-slate-800 dark:text-slate-200 text-sm" id="wa-modal-alumno">ALUMNO</span>
+                    <span id="wa-modal-estado-badge" class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-500/20 text-emerald-600">Continua</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-400 text-[11px] pt-1 border-t border-slate-200/60 dark:border-slate-800">
+                    <div><strong class="text-slate-700 dark:text-slate-300">Curso:</strong> <span id="wa-modal-curso">—</span></div>
+                    <div><strong class="text-slate-700 dark:text-slate-300">Tutor:</strong> <span id="wa-modal-tutor">—</span></div>
+                    <div><strong class="text-slate-700 dark:text-slate-300">Teléfono:</strong> <span id="wa-modal-telefono" class="font-mono text-emerald-600 dark:text-emerald-400 font-bold">—</span></div>
+                    <div><strong class="text-slate-700 dark:text-slate-300">Materia:</strong> <span id="wa-modal-materia">—</span></div>
+                </div>
+            </div>
+
+            <!-- Selección de Plantilla de Mensaje -->
+            <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Seleccionar Plantilla de Mensaje:</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="seleccionarPlantillaWhatsApp('interrumpida')" class="px-2.5 py-1.5 rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 text-red-700 dark:text-red-300 font-bold text-[11px] flex items-center justify-center gap-1 transition">
+                        🔴 Tray. Interrumpida
+                    </button>
+                    <button onclick="seleccionarPlantillaWhatsApp('fluctuante')" class="px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 text-amber-700 dark:text-amber-300 font-bold text-[11px] flex items-center justify-center gap-1 transition">
+                        🟡 Tray. Fluctuante
+                    </button>
+                    <button onclick="seleccionarPlantillaWhatsApp('continua')" class="px-2.5 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-bold text-[11px] flex items-center justify-center gap-1 transition">
+                        🟢 Tray. Continua
+                    </button>
+                    <button onclick="seleccionarPlantillaWhatsApp('libre')" class="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold text-[11px] flex items-center justify-center gap-1 transition">
+                        ✍️ Mensaje Libre
+                    </button>
+                </div>
+            </div>
+
+            <!-- Área de Texto Editable -->
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Mensaje a enviar (Puedes editar el texto libremente):</label>
+                    <span id="wa-char-counter" class="text-[10px] text-slate-400 font-mono">0 caracteres</span>
+                </div>
+                <textarea id="wa-message-body" rows="5" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl p-3 text-xs leading-relaxed focus:outline-none focus:border-emerald-500 transition shadow-inner font-sans" placeholder="Escribe tu mensaje aquí..."></textarea>
+            </div>
+
+            <!-- Guardar plantilla predeterminada -->
+            <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="chk-wa-save-custom" class="rounded border-slate-300 dark:border-slate-700 text-emerald-600 focus:ring-emerald-500">
+                    <span>Guardar esta redacción como mi plantilla personalizada</span>
+                </label>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button onclick="cerrarModalWhatsApp()" class="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">Cancelar</button>
+                <button onclick="ejecutarEnvioWhatsApp()" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg transition flex items-center gap-2 hover:scale-[1.02]">
+                    <span>Enviar por WhatsApp</span>
+                    <span class="text-base">🚀</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 <script>
     // LOGICA DARK MODE
     const themeToggleBtn = document.getElementById('theme-toggle');
@@ -802,7 +873,10 @@
 
     // CÓMPUTO DE 10 NOTAS GEI (MEMORÁNDUM MEMOE-2026-36-E-GDEMZA-DEPJA#DGE)
     function calcularNotasGEI(itemsMap) {
-        let apNotas = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [] };
+        let apSlots = {};
+        for (let k = 1; k <= 8; k++) {
+            apSlots[k] = { q1: null, q2: null, q3: null, pio: null };
+        }
         let autoevaluacion = null;
         let coloquio = null;
 
@@ -812,20 +886,35 @@
 
             let nameLower = itemName.toLowerCase();
             if (nameLower.includes("autoevaluaci") || nameLower.includes("autoevaluacion")) {
-                autoevaluacion = itemData.notaFinal;
+                autoevaluacion = (autoevaluacion === null) ? itemData.notaFinal : Math.max(autoevaluacion, itemData.notaFinal);
             } else if (nameLower.includes("coloquio")) {
-                coloquio = itemData.notaFinal;
+                coloquio = (coloquio === null) ? itemData.notaFinal : Math.max(coloquio, itemData.notaFinal);
             } else if (itemData.infoEaD && itemData.infoEaD.apNum >= 1 && itemData.infoEaD.apNum <= 8) {
-                apNotas[itemData.infoEaD.apNum].push(itemData.notaFinal);
+                let ap = itemData.infoEaD.apNum;
+                if (itemData.infoEaD.tipo === 'CUESTIONARIO') {
+                    if (itemData.infoEaD.semanaAP === 1) {
+                        apSlots[ap].q1 = (apSlots[ap].q1 === null) ? itemData.notaFinal : Math.max(apSlots[ap].q1, itemData.notaFinal);
+                    } else if (itemData.infoEaD.semanaAP === 2) {
+                        apSlots[ap].q2 = (apSlots[ap].q2 === null) ? itemData.notaFinal : Math.max(apSlots[ap].q2, itemData.notaFinal);
+                    } else if (itemData.infoEaD.semanaAP === 3) {
+                        apSlots[ap].q3 = (apSlots[ap].q3 === null) ? itemData.notaFinal : Math.max(apSlots[ap].q3, itemData.notaFinal);
+                    }
+                } else if (itemData.infoEaD.tipo === 'PIO') {
+                    apSlots[ap].pio = (apSlots[ap].pio === null) ? itemData.notaFinal : Math.max(apSlots[ap].pio, itemData.notaFinal);
+                }
             }
         });
 
         let resultadoGEI = {};
         for (let k = 1; k <= 8; k++) {
-            let arr = apNotas[k];
-            if (arr.length > 0) {
-                let suma = arr.reduce((acc, curr) => acc + curr, 0);
-                resultadoGEI[`AP${String(k).padStart(2, '0')}`] = parseFloat((suma / arr.length).toFixed(2));
+            let s = apSlots[k];
+            let notasArr = [s.q1, s.q2, s.q3, s.pio].filter(n => n !== null);
+            // REGLA PEDAGÓGICA RESOLUCIÓN 906-DGE-2026:
+            // Solo se acredita nota en la Libreta GEI si el AP está Completo (4/4 actividades requeridas entregadas).
+            // Si tiene entregas parciales (1/4, 2/4, 3/4) o sin entregas, figura "—" (Pendiente / En proceso).
+            if (notasArr.length === 4) {
+                let suma = notasArr.reduce((acc, curr) => acc + curr, 0);
+                resultadoGEI[`AP${String(k).padStart(2, '0')}`] = parseFloat((suma / 4).toFixed(2));
             } else {
                 resultadoGEI[`AP${String(k).padStart(2, '0')}`] = "—";
             }
@@ -922,15 +1011,15 @@
                         if (!info || info.apNum !== apNum) return;
 
                         if (info.tipo === 'CUESTIONARIO') {
-                            if (info.semanaAP === 1) { nQ1 = itemData.notaFinal; notasArr.push(nQ1); }
-                            else if (info.semanaAP === 2) { nQ2 = itemData.notaFinal; notasArr.push(nQ2); }
-                            else if (info.semanaAP === 3) { nQ3 = itemData.notaFinal; notasArr.push(nQ3); }
+                            if (info.semanaAP === 1) { nQ1 = (nQ1 === "—") ? itemData.notaFinal : Math.max(nQ1, itemData.notaFinal); }
+                            else if (info.semanaAP === 2) { nQ2 = (nQ2 === "—") ? itemData.notaFinal : Math.max(nQ2, itemData.notaFinal); }
+                            else if (info.semanaAP === 3) { nQ3 = (nQ3 === "—") ? itemData.notaFinal : Math.max(nQ3, itemData.notaFinal); }
                         } else if (info.tipo === 'PIO') {
-                            nPIO = itemData.notaFinal;
-                            notasArr.push(nPIO);
+                            nPIO = (nPIO === "—") ? itemData.notaFinal : Math.max(nPIO, itemData.notaFinal);
                         }
                     });
 
+                    let notasArr = [nQ1, nQ2, nQ3, nPIO].filter(n => n !== "—");
                     let promAP = notasArr.length > 0 
                         ? parseFloat((notasArr.reduce((a,b)=>a+b,0)/notasArr.length).toFixed(2)) 
                         : "—";
@@ -1495,6 +1584,181 @@ printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPl
         });
     }
 
+    // ==========================================
+    // MÓDULO DE ENVÍO DIRECTO POR WHATSAPP
+    // ==========================================
+    let estudianteWhatsAppActual = null;
+
+    function limpiarTelefonoWhatsApp(rawPhone) {
+        if (!rawPhone) return "";
+        let str = rawPhone.toString().trim();
+        let cleaned = str.replace(/\D/g, ''); // Deja solo dígitos
+
+        if (!cleaned) return "";
+
+        // Remover cero inicial de código de área (ej: 0261 -> 261)
+        if (cleaned.startsWith('0')) {
+            cleaned = cleaned.substring(1);
+        }
+
+        // Si empieza con 15 (formato celular local sin código de área, ej: 155551234 -> 2615551234)
+        if (cleaned.startsWith('15') && cleaned.length === 9) {
+            cleaned = '261' + cleaned.substring(2);
+        }
+
+        // Si incluye código de área Mendoza con 15 (ej: 261155551234 -> 2615551234)
+        if (cleaned.startsWith('26115') && (cleaned.length === 11 || cleaned.length === 12)) {
+            cleaned = '261' + cleaned.substring(5);
+        }
+
+        // Si ya tiene código internacional de Argentina completo (549...)
+        if (cleaned.startsWith('549') && cleaned.length >= 12) {
+            return cleaned;
+        }
+
+        // Si tiene 54 sin el 9 de celular (ej: 542615551234 -> 5492615551234)
+        if (cleaned.startsWith('54') && !cleaned.startsWith('549') && cleaned.length >= 11) {
+            return '549' + cleaned.substring(2);
+        }
+
+        // Si es un número estándar de 10 dígitos (ej: 2615551234)
+        if (cleaned.length === 10) {
+            return '549' + cleaned;
+        }
+
+        // Si es de 7 u 8 dígitos asumir código de área Mendoza (261)
+        if (cleaned.length === 7 || cleaned.length === 8) {
+            return '549261' + cleaned;
+        }
+
+        return cleaned;
+    }
+
+    function abrirModalWhatsApp(dniUsuario, materiaKey = 'TODAS') {
+        const estMaster = baseEstudiantesMaster[dniUsuario];
+        if (!estMaster) {
+            alert("No se encontraron datos completos del estudiante.");
+            return;
+        }
+
+        let estadoG = "🔴 Interrumpida";
+        let mat = (materiaKey && materiaKey !== "TODAS") ? materiaKey : (listaMateriasDetectadas[0] || "General");
+        let metadata = estMaster.materiasMap[mat];
+        if (metadata) {
+            let cant = Object.keys(metadata.items).length;
+            if (cant >= 3) estadoG = "🟢 Continua";
+            else if (cant >= 1) estadoG = "🟡 Fluctuante";
+        }
+
+        let telLimpio = limpiarTelefonoWhatsApp(estMaster.telefono);
+
+        estudianteWhatsAppActual = {
+            dni: dniUsuario,
+            nombre: estMaster.nombre,
+            tutor: (estMaster.tutor && estMaster.tutor !== "—") ? estMaster.tutor : estMaster.nombre,
+            curso: estMaster.curso || "—",
+            telefonoRaw: estMaster.telefono || "—",
+            telefonoClean: telLimpio,
+            materia: mat,
+            estado: estadoG
+        };
+
+        document.getElementById('wa-modal-alumno').innerText = estudianteWhatsAppActual.nombre;
+        document.getElementById('wa-modal-curso').innerText = estudianteWhatsAppActual.curso;
+        document.getElementById('wa-modal-tutor').innerText = estudianteWhatsAppActual.tutor;
+        document.getElementById('wa-modal-materia').innerText = estudianteWhatsAppActual.materia;
+        document.getElementById('wa-modal-telefono').innerText = telLimpio ? `+${telLimpio}` : "⚠️ Sin teléfono registrado";
+
+        const badge = document.getElementById('wa-modal-estado-badge');
+        if (badge) {
+            badge.innerText = estadoG;
+            if (estadoG.includes("Continua")) badge.className = "px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400";
+            else if (estadoG.includes("Fluctuante")) badge.className = "px-2 py-0.5 rounded-full font-bold text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400";
+            else badge.className = "px-2 py-0.5 rounded-full font-bold text-[10px] bg-red-500/20 text-red-600 dark:text-red-400";
+        }
+
+        // Seleccionar plantilla por defecto según trayectoria
+        let tipoSugerido = 'interrumpida';
+        if (estadoG.includes("Continua")) tipoSugerido = 'continua';
+        else if (estadoG.includes("Fluctuante")) tipoSugerido = 'fluctuante';
+
+        seleccionarPlantillaWhatsApp(tipoSugerido);
+
+        const txtArea = document.getElementById('wa-message-body');
+        if (txtArea && !txtArea.hasAttribute('data-has-listener')) {
+            txtArea.addEventListener('input', actualizarContadorWhatsApp);
+            txtArea.setAttribute('data-has-listener', 'true');
+        }
+
+        const modal = document.getElementById('modal-whatsapp');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function cerrarModalWhatsApp() {
+        const modal = document.getElementById('modal-whatsapp');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    function seleccionarPlantillaWhatsApp(tipo) {
+        if (!estudianteWhatsAppActual) return;
+        const est = estudianteWhatsAppActual;
+        let msg = "";
+
+        let customSaved = localStorage.getItem('custom_wa_template');
+
+        if (tipo === 'interrumpida') {
+            msg = `Estimado/a ${est.tutor}, nos comunicamos del CENS EAD por el seguimiento pedagógico de ${est.nombre} (${est.curso}). Le informamos que registra 0 entregas en la materia ${est.materia} (Trayectoria Interrumpida 🔴). Solicitamos ponerse en contacto para coordinar la entrega de actividades. Muchas gracias.`;
+        } else if (tipo === 'fluctuante') {
+            msg = `Hola ${est.nombre}, te escribimos del CENS EAD para recordarte que tenés entregas pendientes en la materia ${est.materia} (Trayectoria Fluctuante 🟡). Estás a tiempo de ponerte al día con las tareas y cuestionarios de las Aulas Pedagógicas. ¡Contás con nosotros!`;
+        } else if (tipo === 'continua') {
+            msg = `¡Hola ${est.nombre}! Queremos felicitarte desde el CENS EAD por tu excelente compromiso y mantener una Trayectoria Continua 🟢 en la materia ${est.materia}. ¡Seguí así!`;
+        } else if (tipo === 'libre') {
+            msg = customSaved ? customSaved : `Hola ${est.nombre}, nos comunicamos del CENS EAD por la materia ${est.materia}. `;
+        }
+
+        const txtArea = document.getElementById('wa-message-body');
+        if (txtArea) {
+            txtArea.value = msg;
+            actualizarContadorWhatsApp();
+        }
+    }
+
+    function actualizarContadorWhatsApp() {
+        const txtArea = document.getElementById('wa-message-body');
+        const counter = document.getElementById('wa-char-counter');
+        if (txtArea && counter) {
+            counter.innerText = `${txtArea.value.length} caracteres`;
+        }
+    }
+
+    function ejecutarEnvioWhatsApp() {
+        if (!estudianteWhatsAppActual) return;
+        const phone = estudianteWhatsAppActual.telefonoClean;
+        const txtArea = document.getElementById('wa-message-body');
+        const msgText = txtArea ? txtArea.value.trim() : "";
+
+        if (!phone) {
+            alert("⚠️ El estudiante no posee un número de teléfono válido cargado para enviar por WhatsApp.");
+            return;
+        }
+
+        if (!msgText) {
+            alert("Por favor redacta o selecciona un mensaje para enviar.");
+            return;
+        }
+
+        const chkSave = document.getElementById('chk-wa-save-custom');
+        if (chkSave && chkSave.checked) {
+            localStorage.setItem('custom_wa_template', msgText);
+            printLog("🟢 Plantilla personalizada de WhatsApp guardada con éxito.", false, true);
+        }
+
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(msgText)}`;
+        window.open(url, '_blank');
+        cerrarModalWhatsApp();
+        printLog(`💬 Chat de WhatsApp iniciado para ${estudianteWhatsAppActual.nombre} (+${phone}).`, false, true);
+    }
+
     function setModoRol(rol) {
         modoRolActual = rol;
         const btnP = document.getElementById('btn-vista-preceptor');
@@ -1548,6 +1812,7 @@ printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPl
             cols = [
                 { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
                 { id: "nombre", label: "Alumno (GEI)", width: "w-[180px] min-w-[180px]" },
+                { id: "__whatsapp", label: "💬 Contacto", width: "w-[100px] min-w-[100px]" },
                 { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
                 { id: "cuil", label: "CUIL", width: "w-[120px] min-w-[120px]" },
                 { id: "curso", label: "Curso", width: "w-[100px] min-w-[100px]" },
@@ -1562,6 +1827,7 @@ printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPl
             cols = [
                 { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
                 { id: "nombre", label: "Alumno", width: "w-[180px] min-w-[180px]" },
+                { id: "__whatsapp", label: "💬 Contacto", width: "w-[100px] min-w-[100px]" },
                 { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
                 { id: "curso", label: "Curso", width: "w-[90px] min-w-[90px]" },
                 { id: "__materia_gei", label: "Materia", width: "w-[160px] min-w-[160px]" },
@@ -1585,6 +1851,7 @@ printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPl
                 cols = [
                     { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
                     { id: "nombre", label: "Alumno", width: "w-[180px] min-w-[180px]" },
+                    { id: "__whatsapp", label: "💬 Contacto", width: "w-[100px] min-w-[100px]" },
                     { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
                     { id: "curso", label: "Curso", width: "w-[90px] min-w-[90px]" },
                     { id: "__materia_ap", label: "Materia", width: "w-[160px] min-w-[160px]" },
@@ -1599,6 +1866,7 @@ printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPl
                 cols = [
                     { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
                     { id: "nombre", label: "Alumno", width: "w-[180px] min-w-[180px]" },
+                    { id: "__whatsapp", label: "💬 Contacto", width: "w-[100px] min-w-[100px]" },
                     { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
                     { id: "curso", label: "Curso", width: "w-[90px] min-w-[90px]" },
                     { id: "__materia_ap", label: "Materia", width: "w-[160px] min-w-[160px]" },
@@ -1619,6 +1887,7 @@ printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPl
                 cols = [
                     { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
                     { id: "nombre", label: "Alumno", width: "w-[180px] min-w-[180px]" },
+                    { id: "__whatsapp", label: "💬 Contacto", width: "w-[100px] min-w-[100px]" },
                     { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
                     { id: "curso", label: "Curso", width: "w-[90px] min-w-[90px]" },
                     { id: "__materia_doc", label: "Materia", width: "w-[180px] min-w-[180px]" },
@@ -1631,6 +1900,7 @@ printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPl
                 cols = [
                     { id: "__num", label: "#", width: "w-[45px] min-w-[45px]" },
                     { id: "nombre", label: "Alumno", width: "w-[180px] min-w-[180px]" },
+                    { id: "__whatsapp", label: "💬 Contacto", width: "w-[100px] min-w-[100px]" },
                     { id: "nombre_usuario", label: "DNI", width: "w-[100px] min-w-[100px]" },
                     { id: "curso", label: "Curso", width: "w-[90px] min-w-[90px]" },
                     { id: "correo", label: "Correo electrónico", width: "w-[160px] min-w-[160px]" }
@@ -1782,7 +2052,7 @@ printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPl
                     });
                     let promGEIVal = cntG > 0 ? parseFloat((sumaG / cntG).toFixed(2)) : "—";
 
-                    let q1Val = "—", q2Val = "—", q3Val = "—", pioVal = "—", notasAPArr = [];
+                    let q1Val = "—", q2Val = "—", q3Val = "—", pioVal = "—";
                     if (apNumSelected) {
                         Object.keys(itemsMap).forEach(itemName => {
                             let itemData = itemsMap[itemName];
@@ -1791,16 +2061,16 @@ printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPl
                             if (!info || info.apNum !== apNumSelected) return;
 
                             if (info.tipo === 'CUESTIONARIO') {
-                                if (info.semanaAP === 1) { q1Val = itemData.notaFinal; notasAPArr.push(q1Val); }
-                                else if (info.semanaAP === 2) { q2Val = itemData.notaFinal; notasAPArr.push(q2Val); }
-                                else if (info.semanaAP === 3) { q3Val = itemData.notaFinal; notasAPArr.push(q3Val); }
+                                if (info.semanaAP === 1) { q1Val = (q1Val === "—") ? itemData.notaFinal : Math.max(q1Val, itemData.notaFinal); }
+                                else if (info.semanaAP === 2) { q2Val = (q2Val === "—") ? itemData.notaFinal : Math.max(q2Val, itemData.notaFinal); }
+                                else if (info.semanaAP === 3) { q3Val = (q3Val === "—") ? itemData.notaFinal : Math.max(q3Val, itemData.notaFinal); }
                             } else if (info.tipo === 'PIO') {
-                                pioVal = itemData.notaFinal;
-                                notasAPArr.push(pioVal);
+                                pioVal = (pioVal === "—") ? itemData.notaFinal : Math.max(pioVal, itemData.notaFinal);
                             }
                         });
                     }
 
+                    let notasAPArr = [q1Val, q2Val, q3Val, pioVal].filter(n => n !== "—");
                     let promAPVal = notasAPArr.length > 0 ? parseFloat((notasAPArr.reduce((a,b)=>a+b,0)/notasAPArr.length).toFixed(2)) : "—";
                     let estadoAPTxt = "🔴 Sin entregas";
                     if (notasAPArr.length === 4) estadoAPTxt = "🟢 Completo (4/4)";
@@ -1858,6 +2128,13 @@ printLog(`¡Reporte generado! Se consolidó la información de ${datasetMatrizPl
             tdNom.className = "p-2 border-r-2 border-r-slate-300 dark:border-r-slate-700 truncate font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-[#1e293b] group-hover:bg-slate-100 dark:group-hover:bg-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.15)] transition-colors w-[180px] min-w-[180px]";
             tdNom.innerText = fila.nombre;
             tr.appendChild(tdNom);
+
+            // Botón de WhatsApp Directo
+            let tdWa = document.createElement('td');
+            tdWa.className = "p-1 border-r border-slate-300 dark:border-slate-800/50 text-center w-[100px] min-w-[100px]";
+            let matSub = fila.__materiaSub || (materiaDocenteSeleccionada || 'TODAS');
+            tdWa.innerHTML = `<button onclick="abrirModalWhatsApp('${fila.nombre_usuario}', '${matSub}')" class="px-2 py-1 rounded-lg font-bold text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-1 shadow transition w-full hover:scale-105"><span>💬</span> Contactar</button>`;
+            tr.appendChild(tdWa);
 
             tr.appendChild(createCell(fila.nombre_usuario, "w-[100px] min-w-[100px]", "font-mono text-amber-600 dark:text-amber-400/80"));
 
