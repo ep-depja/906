@@ -560,7 +560,8 @@
         let countNuevos = 0;
         for(let i = 0; i < files.length; i++) {
             let f = files[i];
-            if(f.name.endsWith('.xlsx') || f.name.endsWith('.xls') || f.name.endsWith('.csv')) {
+            let lower = f.name.toLowerCase();
+            if(lower.endsWith('.xlsx') || lower.endsWith('.xls') || lower.endsWith('.csv')) {
                 if(!listaArchivosCalificaciones.some(ex => ex.name === f.name)) {
                     listaArchivosCalificaciones.push(f);
                     countNuevos++;
@@ -1002,7 +1003,6 @@
                     
                     let itemsMap = estMaster.materiasMap[mat].items;
                     let nQ1 = "—", nQ2 = "—", nQ3 = "—", nPIO = "—";
-                    let notasArr = [];
 
                     Object.keys(itemsMap).forEach(itemName => {
                         let itemData = itemsMap[itemName];
